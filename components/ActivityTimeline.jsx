@@ -53,7 +53,8 @@ return (
 
 function EntryRow({ entry, onEdit, onDelete }) {
 const [editMode, setEditMode]   = useState(false)
-const [editText, setEditText]   = useState('')
+const [editText, setEditText] = useState('')
+  const [editTime, setEditTime] = useState('')
 const [busy,     setBusy]       = useState(false)
 
 const time = new Date(entry.logged_at).toLocaleTimeString('en-US', {
@@ -61,6 +62,7 @@ hour: 'numeric', minute: '2-digit', hour12: true,
 })
 // Split "9:05 AM" → ["9:05", "AM"]
 const [hhmm, ampm] = time.split(' ')
+  const timeFor24 = new Date(entry.logged_at).toTimeString().slice(0,5)
 
 const startEdit = () => {
 setEditText(entry.generated_text ?? entry.notes ?? '')
@@ -70,7 +72,13 @@ setEditMode(true)
 const saveEdit = async () => {
 if (!editText.trim() || busy) return
 setBusy(true)
-await onEdit(entry.id, { notes: editText.trim(), generated_text: editText.trim() })
+var d = new Date(entry.logged_at)
+      if (editTime) {
+        var parts = editTime.split(':')
+        d.setHours(parseInt(parts[0]))
+        d.setMinutes(parseInt(parts[1]))
+      }
+      await onEdit(entry.id, { notes: editText.trim(), logged_at: d.toISOString() })
 setEditMode(false)
 setBusy(false)
 }
@@ -97,6 +105,8 @@ return (
   <div className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5">
     {editMode ? (
       <div className="space-y-2">
+        <input type="time" value={editTime} onChange={function(e) { setEditTime(e.target.value) }}
+          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500" />
         <textarea
           value={editText}
           onChange={e => setEditText(e.target.value)}
