@@ -197,9 +197,10 @@ export function ReportTemplate(props) {
             <td style={{ ...cellPad, width: '25%', verticalAlign: 'top' }}>
               <strong style={{ textDecoration: 'underline' }}>Weather:</strong><br />
               <span>Temp: {report.weather_temp || ''}</span><br />
-              <Check checked={weatherVals.indexOf('Clear') >= 0 || weatherVals.indexOf('Sunny') >= 0} label="Sunny" /><br />
-              <Check checked={weatherVals.indexOf('Rain') >= 0 || weatherVals.indexOf('Heavy Rain') >= 0} label="Rain" /><br />
-              <Check checked={weatherVals.indexOf('Cloudy') >= 0 || weatherVals.indexOf('Partly Cloudy') >= 0} label="Overcast" /><br />
+              <Check checked={weatherVals.indexOf('Clear') >= 0} label="Clear" /><br />
+              <Check checked={weatherVals.indexOf('Cloudy') >= 0} label="Cloudy" /><br />
+              <Check checked={weatherVals.indexOf('Rain') >= 0} label="Rain" /><br />
+              <Check checked={weatherVals.indexOf('Snow') >= 0} label="Snow" /><br />
               <Check checked={weatherVals.indexOf('Fog') >= 0} label="Fog" />
             </td>
             <td style={{ ...cellPad, width: '30%', verticalAlign: 'top', borderLeft: border }}>

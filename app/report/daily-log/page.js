@@ -405,7 +405,7 @@ function DailyLogPage() {
       <div className="fixed bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-800 p-4">
         <button onClick={function() { router.push('/report/preview?report=' + report.id) }}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 transition-colors flex items-center justify-center gap-2">
-          Generate Report PDF
+          Preview & Generate
         </button>
       </div>
 
