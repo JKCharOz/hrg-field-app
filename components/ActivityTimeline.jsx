@@ -65,7 +65,9 @@ const [hhmm, ampm] = time.split(' ')
   const timeFor24 = new Date(entry.logged_at).toTimeString().slice(0,5)
 
 const startEdit = () => {
-setEditText(entry.generated_text ?? entry.notes ?? '')
+setEditText(entry.notes || '')
+      var d = new Date(entry.logged_at)
+      setEditTime(d.toTimeString().slice(0,5))
 setEditMode(true)
 }
 
