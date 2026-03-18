@@ -107,6 +107,7 @@ return (
   <div className="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5">
     {editMode ? (
       <div className="space-y-2">
+        <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Time</p>
         <input type="time" value={editTime} onChange={function(e) { setEditTime(e.target.value) }}
           className="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-orange-500" />
         <textarea
