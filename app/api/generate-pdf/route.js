@@ -132,36 +132,36 @@ export async function POST(req) {
       if (!photos.length) return ''
       var cells = photos.map(function(p) {
         var url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
-        return '<div style="border:1px solid #ccc"><img src="' + url + '" style="width:100%;height:160px;object-fit:cover;display:block" />' + (p.caption ? '<p style="margin:3px;font-size:8px;color:#444">' + p.caption + '</p>' : '') + '</div>'
+        return '<div style="border:1px solid #ccc;overflow:hidden"><img src="' + url + '" style="width:100%;height:180px;object-fit:cover;display:block" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
       }).join('')
-      return '<div style="border:1px solid #000;margin-bottom:6px"><div style="background:#e0e0e0;padding:2px 4px;font-weight:bold;border-bottom:1px solid #000;font-size:10px">Photos:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px">' + cells + '</div></div>'
+      return '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Photos:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px">' + cells + '</div></div>'
     }
 
     function labelBlock(label, value) {
-      return '<div style="border:1px solid #000;margin-bottom:6px"><div style="background:#e0e0e0;padding:2px 4px;font-weight:bold;border-bottom:1px solid #000;font-size:10px">' + label + '</div><div style="padding:4px 6px;min-height:20px;font-size:10px;white-space:pre-wrap;color:' + (value ? '#000' : '#999') + '">' + (value || 'N/A') + '</div></div>'
+      return '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">' + label + '</div><div style="padding:6px 8px;min-height:22px;font-size:11px;white-space:pre-wrap;color:' + (value ? '#000' : '#999') + '">' + (value || 'N/A') + '</div></div>'
     }
 
-    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:10px;color:#000;margin:0;padding:16px}table{border-collapse:collapse}td,th{padding:2px 4px}*{box-sizing:border-box}</style></head><body>'
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:11px;color:#000;margin:0;padding:20px}table{border-collapse:collapse}td,th{padding:3px 6px}*{box-sizing:border-box}p{margin:2px 0}</style></head><body>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px">'
     + '<img src="' + process.env.NEXT_PUBLIC_APP_URL + '/hrg-logo.png" style="height:40px;object-fit:contain" />'
     + '<p style="font-weight:bold;font-size:13px;margin:0">DAILY OBSERVATION REPORT</p></div>'
-    + '<table style="width:100%;margin-bottom:6px;border:1px solid #000"><tbody>'
+    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody>'
     + '<tr><td style="font-weight:bold;width:100px;padding:2px 4px;border-bottom:1px solid #ccc">Project:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc;border-right:1px solid #000">' + na(project.project_name) + '</td><td style="font-weight:bold;width:110px;padding:2px 4px;border-bottom:1px solid #ccc">Report No:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + na(report.report_number) + '</td></tr>'
     + '<tr><td style="font-weight:bold;padding:2px 4px;border-bottom:1px solid #ccc">Owner:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc;border-right:1px solid #000">' + na(project.owner) + '</td><td style="font-weight:bold;padding:2px 4px;border-bottom:1px solid #ccc">HRG Project No:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + na(project.project_number) + '</td></tr>'
     + '<tr><td style="font-weight:bold;padding:2px 4px">Re:</td><td style="padding:2px 4px;border-right:1px solid #000">' + na(report.re) + '</td><td style="font-weight:bold;padding:2px 4px">Date:</td><td style="padding:2px 4px">' + reportDate + (weekday ? ' (' + weekday + ')' : '') + '</td></tr>'
     + '</tbody></table>'
-    + '<table style="width:100%;margin-bottom:6px;border:1px solid #000"><tbody><tr>'
+    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody><tr>'
     + '<td style="padding:4px;width:25%;vertical-align:top"><strong style="text-decoration:underline">Weather:</strong><br>Temp: ' + na(report.weather_temp) + '<br>' + chk(weatherVals.indexOf('Clear')>=0||weatherVals.indexOf('Sunny')>=0,'Sunny') + '<br>' + chk(weatherVals.indexOf('Rain')>=0||weatherVals.indexOf('Heavy Rain')>=0,'Rain') + '<br>' + chk(weatherVals.indexOf('Cloudy')>=0||weatherVals.indexOf('Partly Cloudy')>=0,'Overcast') + '<br>' + chk(weatherVals.indexOf('Fog')>=0,'Fog') + '</td>'
     + '<td style="padding:4px;width:30%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Weekday:</strong><br>' + chk(weekday==='Monday','Monday') + ' ' + chk(weekday==='Thursday','Thursday') + '<br>' + chk(weekday==='Tuesday','Tuesday') + ' ' + chk(weekday==='Friday','Friday') + '<br>' + chk(weekday==='Wednesday','Wednesday') + ' ' + chk(weekday==='Saturday','Saturday') + '</td>'
     + '<td style="padding:4px;width:25%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Site Conditions:</strong><br>' + chk(siteVals.indexOf('Dry')>=0,'Dry') + '<br>' + chk(siteVals.indexOf('Wet')>=0,'Wet') + '<br>' + chk(siteVals.indexOf('Muddy')>=0,'Muddy') + '<br>' + chk(siteVals.indexOf('Snow Covered')>=0,'Snow') + '</td>'
     + '<td style="padding:4px;width:20%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Work Period:</strong><br>' + chk(report.work_period==='Day Work','Day Work') + '<br>' + chk(report.work_period==='Night Work','Night Work') + '</td>'
     + '</tr></tbody></table>'
-    + '<table style="width:100%;margin-bottom:6px;border:1px solid #000"><tbody><tr><td style="padding:2px 4px;width:50%;border-right:1px solid #000"><strong>Contractors:</strong> ' + na(project.contractor) + '</td><td style="padding:2px 4px"><strong>Project Engineers:</strong> ' + na(project.project_engineer) + '</td></tr></tbody></table>'
-    + '<table style="width:100%;margin-bottom:6px;border:1px solid #000"><thead><tr style="background:#e0e0e0"><td colspan="2" style="padding:2px 4px;font-weight:bold">Work Force:</td></tr></thead><tbody>'
+    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody><tr><td style="padding:4px 6px;width:50%;border-right:1px solid #000"><strong>Contractors:</strong> ' + na(project.contractor) + '</td><td style="padding:2px 4px"><strong>Project Engineers:</strong> ' + na(project.project_engineer) + '</td></tr></tbody></table>'
+    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><thead><tr style="background:#d8d8d8"><td colspan="2" style="padding:4px 6px;font-weight:bold;font-size:11px">Work Force:</td></tr></thead><tbody>'
     + '<tr><td style="padding:2px 4px;width:40%;border-right:1px solid #000;border-bottom:1px solid #ccc;font-weight:bold">Hours Worked:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + (report.hours_worked ? report.hours_worked + ' hours' : 'N/A') + '</td></tr>'
     + ['Foreman','Operator','Laborer','Truck Driver','Superintendent','Other'].map(function(r) { return '<tr><td style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #ccc">' + r + ':</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + (crewMap[r] || 'N/A') + '</td></tr>' }).join('')
     + '</tbody></table>'
-    + '<div style="border:1px solid #000;margin-bottom:6px"><div style="background:#e0e0e0;padding:2px 4px;font-weight:bold;border-bottom:1px solid #000;font-size:10px">Equipment:</div>'
+    + '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Equipment:</div>'
     + '<table style="width:100%"><thead><tr>' + ECOLS.map(function(c) { return '<th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;font-weight:bold;text-decoration:underline;font-size:9px;text-align:left;width:20%">' + c + '</th>' }).join('') + '</tr></thead>'
     + '<tbody>' + equipRows(ECOLS)
     + '<tr>' + ECOLS2.map(function(c) { return '<th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;border-top:1px solid #000;font-weight:bold;text-decoration:underline;font-size:9px;text-align:left">' + c + '</th>' }).join('') + '</tr>'
@@ -169,8 +169,8 @@ export async function POST(req) {
     + labelBlock('Sub-Contractors:', '')
     + labelBlock('Visitors:', report.visitors)
     + labelBlock('Items Discussed & People Contacted:', report.items_discussed)
-    + '<div style="border:1px solid #000;margin-bottom:6px"><div style="background:#e0e0e0;padding:2px 4px;font-weight:bold;border-bottom:1px solid #000;font-size:10px">Work Observed:</div><div style="padding:4px 6px;min-height:40px">' + activityRows() + '</div></div>'
-    + '<div style="border:1px solid #000;margin-bottom:6px"><div style="background:#e0e0e0;padding:2px 4px;font-weight:bold;border-bottom:1px solid #000;font-size:10px">Quantity Installed -- IDIQ:</div>'
+    + '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Work Observed:</div><div style="padding:6px 8px;min-height:40px">' + activityRows() + '</div></div>'
+    + '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Quantity Installed -- IDIQ:</div>'
     + '<table style="width:100%"><thead><tr style="background:#f0f0f0"><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:10%;text-align:left;font-size:9px">Item No.</th><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:40%;text-align:left;font-size:9px">Description</th><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:15%;text-align:left;font-size:9px">Quantity</th><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:10%;text-align:left;font-size:9px">Unit</th><th style="padding:2px 4px;border-bottom:1px solid #000;text-align:left;font-size:9px">Sheet/STA/Note</th></tr></thead>'
     + '<tbody>' + qtyRows() + '</tbody></table></div>'
     + labelBlock('Materials Delivered:', delivered.map(function(m) { return m.material_type + ' -- ' + m.quantity + ' ' + m.unit }).join(', '))
