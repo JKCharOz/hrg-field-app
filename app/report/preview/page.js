@@ -186,7 +186,7 @@ export function ReportTemplate(props) {
             <td style={{ ...cellPad, fontWeight: 'bold' }}>Re:</td>
             <td style={{ ...cellPad, borderRight: border }}>{report.re || ''}</td>
             <td style={{ ...cellPad, fontWeight: 'bold' }}>Date:</td>
-            <td style={cellPad}>{reportDate}{weekday ? ' (' + weekday + ')' : ''}</td>
+            <td style={cellPad}>{reportDate}</td>
           </tr>
         </tbody>
       </table>
