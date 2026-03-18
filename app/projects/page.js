@@ -179,6 +179,8 @@ export default function ProjectsPage() {
       <div className="bg-slate-900 border-b border-slate-700 px-4 pt-12 pb-4">
         <p className="text-orange-400 text-xs font-semibold uppercase tracking-widest mb-0.5">HRG Field Log</p>
         <h1 className="text-white font-bold text-xl">Projects</h1>
+        <button onClick={function() { router.push('/projects/new') }}
+          className="text-orange-400 text-sm font-semibold active:text-orange-300">+ New</button>
       </div>
       <div className="px-4 py-4 space-y-6">
         {projects.length === 0 && (
