@@ -1,0 +1,269 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { HeaderSection } from '@/components/HeaderSection'
+import { DailyConditions } from '@/components/DailyConditions'
+import { ButtonGrid } from '@/components/ButtonGrid'
+import { ActivityTimeline } from '@/components/ActivityTimeline'
+import { StatsRow } from '@/components/StatsRow'
+
+function Divider() { return <div style={{ margin: '0 1rem', borderTop: '1px solid rgb(30 41 59)' }} /> }
+function SectionLabel(p) { return <p className="px-4 text-slate-500 text-xs uppercase tracking-widest">{p.text}</p> }
+
+function Collapsible(props) {
+  var [open, setOpen] = useState(false)
+  return (
+    <div className="mx-4 rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <button onClick={function() { setOpen(function(o) { return !o }) }}
+        className="w-full flex items-center justify-between px-4 py-3 active:bg-slate-700/50">
+        <span className="text-slate-300 text-sm font-semibold">{props.label}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} className="text-slate-500">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && <div className="border-t border-slate-700 px-4 py-3">{props.children}</div>}
+    </div>
+  )
+}
+
+function PlaceholderModal(props) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={props.onClose}>
+      <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4" onClick={function(e) { e.stopPropagation() }}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-white font-bold text-lg">{props.title}</h3>
+          <button onClick={props.onClose} className="text-slate-500 text-2xl leading-none active:text-slate-300">x</button>
+        </div>
+        <p className="text-slate-500 text-sm">This panel will be built in the next phase.</p>
+        <button onClick={props.onClose} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm active:bg-slate-800">Close</button>
+      </div>
+    </div>
+  )
+}
+
+var MODAL_LABELS = {
+  equipment: 'Equipment', crew: 'Crew', photo: 'Photo',
+  materials: 'Materials Delivered', quantity: 'Quantity Installed',
+  visitors: 'Visitors', discussed: 'Items Discussed and People Contacted', remarks: 'Remarks',
+}
+var ADDITIONAL = ['Sub-Contractors', 'Testing', 'RFI', 'Non-Conforming']
+
+export default function DailyLogPage() {
+  var params = useSearchParams()
+  var router = useRouter()
+  var [report, setReport] = useState(null)
+  var [project, setProject] = useState(null)
+  var [activities, setActivities] = useState([])
+  var [materials, setMaterials] = useState([])
+  var [equipment, setEquipment] = useState([])
+  var [photos, setPhotos] = useState([])
+  var [loading, setLoading] = useState(true)
+  var [pageError, setPageError] = useState(null)
+  var [modal, setModal] = useState(null)
+  var [toast, setToast] = useState(null)
+  var [logText, setLogText] = useState('')
+  var [addingLog, setAddingLog] = useState(false)
+
+  useEffect(function() {
+    var reportId = params.get('report')
+    if (!reportId) { setPageError('No report ID in URL.'); setLoading(false); return }
+    loadAll(reportId)
+  }, [])
+
+  async function loadAll(reportId) {
+    setLoading(true)
+    var repResult = await supabase.from('daily_reports').select('*').eq('id', reportId).single()
+    if (repResult.error || !repResult.data) { setPageError('Report not found.'); setLoading(false); return }
+    setReport(repResult.data)
+    var projResult = await supabase.from('projects').select('*').eq('id', repResult.data.project_id).single()
+    setProject(projResult.data || null)
+    var all = await Promise.all([
+      supabase.from('activity_logs').select('*').eq('report_id', reportId).order('logged_at', { ascending: true }),
+      supabase.from('materials').select('*').eq('report_id', reportId),
+      supabase.from('equipment_logs').select('*').eq('report_id', reportId),
+      supabase.from('field_photos').select('*').eq('report_id', reportId),
+    ])
+    setActivities(all[0].data || [])
+    setMaterials(all[1].data || [])
+    setEquipment(all[2].data || [])
+    setPhotos(all[3].data || [])
+    setLoading(false)
+  }
+
+  function handleReportUpdate(updated) { setReport(updated) }
+
+  async function handleAddLog() {
+    if (!logText.trim() || addingLog || !report) return
+    setAddingLog(true)
+    var result = await supabase.from('activity_logs').insert({
+      report_id: report.id, activity_type: 'CUSTOM',
+      notes: logText.trim(), generated_text: logText.trim(),
+      logged_at: new Date().toISOString(), source: 'manual', created_at: new Date().toISOString(),
+    }).select().single()
+    setAddingLog(false)
+    if (result.error) { showToast('Failed to add entry', 'error'); return }
+    setActivities(function(prev) { return prev.concat([result.data]) })
+    setLogText('')
+    showToast('Entry added', 'success')
+  }
+
+  async function handleEditActivity(id, updates) {
+    var result = await supabase.from('activity_logs').update(updates).eq('id', id).select().single()
+    if (result.error) { showToast('Failed to save', 'error'); return }
+    setActivities(function(prev) { return prev.map(function(e) { return e.id === id ? result.data : e }) })
+  }
+
+  async function handleDeleteActivity(id) {
+    var result = await supabase.from('activity_logs').delete().eq('id', id)
+    if (result.error) { showToast('Failed to delete', 'error'); return }
+    setActivities(function(prev) { return prev.filter(function(e) { return e.id !== id }) })
+  }
+
+  function showToast(msg, type) {
+    setToast({ msg: msg, type: type || 'success' })
+    setTimeout(function() { setToast(null) }, 2500)
+  }
+
+  var counts = {
+    photos: photos.length,
+    materialsDelivered: materials.filter(function(m) { return m.is_delivery === true }).length,
+    quantityInstalled: materials.filter(function(m) { return m.is_delivery === false }).length,
+    equipment: equipment.length,
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3">
+        <div className="w-7 h-7 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
+        <p className="text-slate-500 text-sm">Loading report...</p>
+      </div>
+    )
+  }
+  if (pageError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-white font-bold">{pageError}</p>
+        <button onClick={function() { router.push('/projects') }} className="text-orange-400 text-sm mt-2">Back to projects</button>
+      </div>
+    )
+  }
+
+  var remarksPreview = report && report.remarks ? report.remarks.slice(0, 52) : 'Tap to add'
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <HeaderSection report={report} project={project} backHref="/projects" />
+      <div className="pt-3 pb-36 space-y-4">
+
+        <div className="mx-4 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-white font-bold text-base leading-tight truncate">{project ? project.project_name : ''}</p>
+              {project && project.project_number && <p className="text-orange-400 text-xs font-mono mt-0.5">{project.project_number}</p>}
+            </div>
+            {project && project.contractor && <p className="text-slate-400 text-xs text-right flex-shrink-0">{project.contractor}</p>}
+          </div>
+          {project && project.location && <p className="text-slate-500 text-xs mt-1.5">{project.location}</p>}
+        </div>
+
+        <DailyConditions report={report} onUpdate={handleReportUpdate} />
+
+        <div className="px-4">
+          <button onClick={function() { setModal('discussed') }}
+            className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3.5 active:bg-slate-700 transition-colors text-left">
+            <div className="min-w-0 flex-1">
+              <p className="text-slate-200 text-sm font-semibold">Items Discussed and People Contacted</p>
+              <p className="text-slate-500 text-xs">Tap to add</p>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 flex-shrink-0">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+
+        <Divider />
+
+        <div>
+          <SectionLabel text="Add to Report" />
+          <div className="mt-2"><ButtonGrid onPress={function(key) { setModal(key) }} /></div>
+        </div>
+
+        <Divider />
+
+        <Collapsible label="Additional Sections">
+          <div className="space-y-1">
+            {ADDITIONAL.map(function(label) {
+              return <button key={label} onClick={function() { setModal(label) }}
+                className="w-full text-left text-slate-400 text-sm py-2.5 border-b border-slate-700 last:border-0 active:text-slate-200">{label}</button>
+            })}
+          </div>
+        </Collapsible>
+
+        <Divider />
+
+        <div>
+          <SectionLabel text="Work Observed" />
+          <div className="flex gap-2 px-4 mt-3">
+            <input type="text" value={logText}
+              onChange={function(e) { setLogText(e.target.value) }}
+              onKeyDown={function(e) { if (e.key === 'Enter') handleAddLog() }}
+              placeholder="Describe an observed activity..."
+              className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
+            <button onClick={handleAddLog} disabled={!logText.trim() || addingLog}
+              className="bg-orange-500 text-white font-bold px-4 rounded-xl active:bg-orange-600 disabled:opacity-40 transition-colors flex-shrink-0">
+              {addingLog ? '...' : 'Add'}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-1">
+          <ActivityTimeline entries={activities} onEdit={handleEditActivity} onDelete={handleDeleteActivity} />
+        </div>
+
+        <Divider />
+        <StatsRow counts={counts} />
+        <Divider />
+
+        <div className="px-4">
+          <button onClick={function() { setModal('remarks') }}
+            className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3.5 active:bg-slate-700 transition-colors text-left">
+            <div className="min-w-0 flex-1">
+              <p className="text-slate-200 text-sm font-semibold">Remarks</p>
+              <p className="text-slate-500 text-xs truncate">{remarksPreview}</p>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 flex-shrink-0">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-4">
+          <button onClick={function() { router.push('/report/preview?report=' + report.id) }}
+            className="w-full border border-orange-500/50 text-orange-400 font-semibold py-3.5 rounded-xl text-sm active:bg-orange-500/10 transition-colors">
+            Preview Report
+          </button>
+        </div>
+
+      </div>
+
+      <div className="fixed bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-800 p-4">
+        <button onClick={function() { router.push('/report/pdf?report=' + report.id) }}
+          className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 transition-colors flex items-center justify-center gap-2">
+          Generate Report PDF
+        </button>
+      </div>
+
+      {modal && <PlaceholderModal title={MODAL_LABELS[modal] || modal} onClose={function() { setModal(null) }} />}
+
+      {toast && (
+        <div className="fixed top-20 inset-x-0 flex justify-center z-50 px-4" style={{ pointerEvents: 'none' }}>
+          <span className={'text-sm font-medium px-5 py-2.5 rounded-full shadow ' + (toast.type === 'error' ? 'bg-red-900 text-red-200' : 'bg-emerald-800 text-emerald-200')}>
+            {toast.msg}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
