@@ -178,9 +178,11 @@ export default function ProjectsPage() {
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="bg-slate-900 border-b border-slate-700 px-4 pt-12 pb-4">
         <p className="text-orange-400 text-xs font-semibold uppercase tracking-widest mb-0.5">HRG Field Log</p>
-        <h1 className="text-white font-bold text-xl">Projects</h1>
-        <button onClick={function() { router.push('/projects/new') }}
-          className="text-orange-400 text-sm font-semibold active:text-orange-300">+ New</button>
+        <div className="flex items-center justify-between">
+          <h1 className="text-white font-bold text-xl">Projects</h1>
+          <button onClick={function() { router.push('/projects/new') }}
+            className="bg-orange-500 text-white text-sm font-semibold px-4 py-2 rounded-xl active:bg-orange-600 transition-colors">+ New Project</button>
+        </div>
       </div>
       <div className="px-4 py-4 space-y-6">
         {projects.length === 0 && (
