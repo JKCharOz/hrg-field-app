@@ -39,7 +39,7 @@ export function MaterialsModal(props) {
   }
 
   async function handleSave() {
-    if (!materialType.trim() || !quantity.trim() || saving) return
+    if (!materialType.trim() || saving) return
     setSaving(true)
     await supabase.from('materials').insert({
       report_id: report.id,
@@ -169,7 +169,7 @@ export function MaterialsModal(props) {
             </select>
           </div>
         </div>
-        <button onClick={handleSave} disabled={!materialType.trim() || !quantity.trim() || saving}
+        <button onClick={handleSave} disabled={!materialType.trim() || saving}
           className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600 disabled:opacity-40 transition-colors">
           {saving ? 'Saving...' : 'Add Material'}
         </button>
