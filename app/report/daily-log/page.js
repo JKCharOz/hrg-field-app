@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { HeaderSection } from '@/components/HeaderSection'
@@ -125,7 +125,15 @@ var MODAL_LABELS = {
 }
 var ADDITIONAL = ['Sub-Contractors', 'Testing', 'RFI', 'Non-Conforming']
 
-export default function DailyLogPage() {
+export default function DailyLogPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-7 h-7 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" /></div>}>
+      <DailyLogPage />
+    </Suspense>
+  )
+}
+
+function DailyLogPage() {
   var params = useSearchParams()
   var router = useRouter()
   var [report, setReport] = useState(null)

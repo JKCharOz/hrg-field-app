@@ -1,9 +1,17 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function PreviewPage() {
+export default function PreviewPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><p className="text-gray-500 text-sm">Loading...</p></div>}>
+      <PreviewPage />
+    </Suspense>
+  )
+}
+
+function PreviewPage() {
   var params = useSearchParams()
   var router = useRouter()
   var [data, setData] = useState(null)
