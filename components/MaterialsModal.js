@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 export function MaterialsModal(props) {
   var report = props.report
   var onClose = props.onClose
+  var onSaved = props.onSaved
   var [presets, setPresets] = useState([])
   var [materialType, setMaterialType] = useState('')
   var [quantity, setQuantity] = useState('')
@@ -29,6 +30,12 @@ export function MaterialsModal(props) {
   async function loadMaterials() {
     var result = await supabase.from('materials').select('*').eq('report_id', report.id).eq('is_delivery', true).order('logged_at', { ascending: true })
     if (!result.error && result.data) { setMaterials(result.data) }
+  }
+
+  async function deleteEntry(id) {
+    await supabase.from('materials').delete().eq('id', id)
+    setMaterials(function(prev) { return prev.filter(function(m) { return m.id !== id }) })
+    if (onSaved) { onSaved() }
   }
 
   async function handleSave() {
@@ -176,7 +183,10 @@ export function MaterialsModal(props) {
                 return (
                   <div key={m.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
                     <span className="text-slate-200 text-sm">{m.material_type}</span>
-                    <span className="text-orange-400 text-xs font-mono">{m.quantity} {m.unit}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-400 text-xs font-mono">{m.quantity} {m.unit}</span>
+                      <button onClick={function() { deleteEntry(m.id) }} className="text-slate-600 active:text-red-400 text-xs">x</button>
+                    </div>
                   </div>
                 )
               })}

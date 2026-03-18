@@ -411,7 +411,7 @@ function DailyLogPage() {
 
       {modal === 'remarks' && <RemarksModal report={report} onSave={handleReportUpdate} onClose={function() { setModal(null) }} />}
       {modal === 'photo' && <PhotoModal report={report} onClose={function() { setModal(null) }} />}
-      {modal === 'materials' && <MaterialsModal report={report} onClose={function() { setModal(null) }} />}
+      {modal === 'materials' && <MaterialsModal report={report} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'equipment' && <EquipmentModal report={report} project={project} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'visitors' && <VisitorsModal report={report} onSave={handleReportUpdate} onClose={function() { setModal(null) }} />}
       {modal === 'crew' && <CrewModal report={report} project={project} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
