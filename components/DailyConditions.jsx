@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-var SKY_OPTIONS = ['Clear', 'Partly Cloudy', 'Cloudy', 'Rain', 'Heavy Rain', 'Snow', 'Fog']
+var SKY_OPTIONS = ['Clear', 'Cloudy', 'Rain', 'Snow', 'Fog']
 var SITE_OPTIONS = ['Dry', 'Wet', 'Muddy', 'Snow Covered', 'Frozen']
 var WORK_PERIOD_OPTIONS = ['Day Work', 'Night Work']
 
