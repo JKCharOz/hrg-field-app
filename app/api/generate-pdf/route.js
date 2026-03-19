@@ -1,13 +1,12 @@
 import puppeteer from 'puppeteer'
 import { createClient } from '@supabase/supabase-js'
 
-var supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
-
 export async function POST(req) {
   try {
+    var supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
     var { reportId } = await req.json()
     if (!reportId) { return Response.json({ error: 'No reportId' }, { status: 400 }) }
 
