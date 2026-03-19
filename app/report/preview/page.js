@@ -205,9 +205,12 @@ export function ReportTemplate(props) {
             </td>
             <td style={{ ...cellPad, width: '30%', verticalAlign: 'top', borderLeft: border }}>
               <strong style={{ textDecoration: 'underline' }}>Weekday:</strong><br />
-              <Check checked={weekday === 'Monday'} label="Monday" /> <Check checked={weekday === 'Thursday'} label="Thursday" /><br />
-              <Check checked={weekday === 'Tuesday'} label="Tuesday" /> <Check checked={weekday === 'Friday'} label="Friday" /><br />
-              <Check checked={weekday === 'Wednesday'} label="Wednesday" /> <Check checked={weekday === 'Saturday'} label="Saturday" />
+              <Check checked={weekday === 'Monday'} label="Monday" /><br />
+              <Check checked={weekday === 'Tuesday'} label="Tuesday" /><br />
+              <Check checked={weekday === 'Wednesday'} label="Wednesday" /><br />
+              <Check checked={weekday === 'Thursday'} label="Thursday" /><br />
+              <Check checked={weekday === 'Friday'} label="Friday" /><br />
+              <Check checked={weekday === 'Saturday'} label="Saturday" />
             </td>
             <td style={{ ...cellPad, width: '25%', verticalAlign: 'top', borderLeft: border }}>
               <strong style={{ textDecoration: 'underline' }}>Site Conditions:</strong><br />
