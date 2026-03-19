@@ -80,7 +80,7 @@ function PreviewPage() {
           var result = await res.json()
           setGenerating(false)
           if (result.url) { setPdfUrl(result.url); window.open(result.url, '_blank') }
-          else { alert('PDF generation failed: ' + (result.error || 'unknown error')) }
+          else { alert('PDF generation failed: ' + (result.error || 'unknown error') + (result.stack ? '\n\n' + result.stack.slice(0,200) : '')) }
         }} disabled={generating}
           className="bg-orange-500 text-white text-sm font-semibold px-4 py-2 rounded-xl disabled:opacity-50 active:bg-orange-600">
           {generating ? 'Generating...' : 'Generate PDF'}

@@ -204,6 +204,6 @@ export async function POST(req) {
     return Response.json({ url: pdfUrl })
   } catch (err) {
     console.error('PDF generation error:', err)
-    return Response.json({ error: err.message }, { status: 500 })
+    return Response.json({ error: err.message, stack: err.stack }, { status: 500 })
   }
 }
