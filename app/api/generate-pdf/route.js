@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-core'
+import chromium from '@sparticuz/chromium'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req) {
@@ -189,7 +190,12 @@ export async function POST(req) {
     + '</tbody></table>'
     + '</body></html>'
 
-    var browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+    var browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    })
     var page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle0' })
     await new Promise(function(r) { setTimeout(r, 3000) })
