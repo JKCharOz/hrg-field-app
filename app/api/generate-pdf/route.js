@@ -11,7 +11,12 @@ export async function POST(req) {
     if (!reportId) { return Response.json({ error: 'No reportId' }, { status: 400 }) }
 
     var repResult = await supabaseAdmin.from('daily_reports').select('*').eq('id', reportId).single()
-    if (repResult.error || !repResult.data) { return Response.json({ error: 'Report not found' }, { status: 404 }) }
+    console.log('repResult error:', repResult.error)
+    console.log('repResult data:', repResult.data ? 'found' : 'null')
+    console.log('reportId:', reportId)
+    console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+    if (repResult.error || !repResult.data) { return Response.json({ error: repResult.error ? JSON.stringify(repResult.error) : 'Report not found - id: ' + reportId + ' key: ' + (process.env.SUPABASE_SERVICE_ROLE_KEY ? 'exists' : 'MISSING') + ' url: ' + (process.env.NEXT_PUBLIC_SUPABASE_URL || 'MISSING') }, { status: 404 }) }
     var report = repResult.data
 
     var projResult = await supabaseAdmin.from('projects').select('*').eq('id', report.project_id).single()
