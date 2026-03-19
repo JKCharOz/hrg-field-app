@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(req) {
   try {
     var supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      'https://jwksvwyoyxrakaagcxyk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ'
     )
     var { reportId } = await req.json()
     if (!reportId) { return Response.json({ error: 'No reportId' }, { status: 400 }) }
