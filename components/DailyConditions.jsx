@@ -16,6 +16,7 @@ sky: [],
 temperature: '',
 wind: [],
 work_period: null,
+re: '',
 })
 
 useEffect(function() {
@@ -25,6 +26,7 @@ sky: report.weather_conditions ? String(report.weather_conditions).split(',') : 
 temperature: report.weather_temp || '',
 wind: report.site_conditions ? String(report.site_conditions).split(',') : [],
 work_period: report.work_period || null,
+re: report.re || '',
 })
 }
 }, [report && report.id])
@@ -58,6 +60,13 @@ if (!report || !report.id) return
 var payload = {}
 payload[dbField] = next
 var result = await supabase.from('daily_reports').update(payload).eq('id', report.id).select().single()
+if (!result.error && result.data) { onUpdate(result.data) }
+}
+
+async function saveRe(value) {
+setLocalValues(function(prev) { return Object.assign({}, prev, { re: value }) })
+if (!report || !report.id) return
+var result = await supabase.from('daily_reports').update({ re: value }).eq('id', report.id).select().single()
 if (!result.error && result.data) { onUpdate(result.data) }
 }
 
