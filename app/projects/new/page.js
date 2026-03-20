@@ -21,8 +21,7 @@ function NewProjectPage() {
     project_number: '',
     owner: '',
     contractor: '',
-    start_date: '',
-  })
+      })
 
   useEffect(function() {
     loadProfile()
@@ -91,7 +90,7 @@ function NewProjectPage() {
         <Field field="project_name" label="Project Name" required={true} placeholder="e.g. Main Street Sewer Replacement" />
         <Field field="project_number" label="Project Number" placeholder="e.g. 2024-001" />
         <Field field="owner" label="Owner" placeholder="e.g. Capital Region Water" />
-        <Field field="contractor" label="General Contractor" placeholder="e.g. Rogele Inc." />
+        <Field field="contractor" label="Contractor" placeholder="e.g. Rogele Inc." />
 
         <button onClick={handleSave} disabled={saving || !form.project_name.trim()}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-40 transition-colors mt-4">
