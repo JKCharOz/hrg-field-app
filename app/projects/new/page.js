@@ -20,10 +20,7 @@ function NewProjectPage() {
     project_name: '',
     project_number: '',
     owner: '',
-    re: '',
     contractor: '',
-    project_engineer: '',
-    location: '',
     start_date: '',
   })
 
@@ -53,8 +50,6 @@ function NewProjectPage() {
       project_number: form.project_number.trim() || null,
       owner: form.owner.trim() || null,
       general_contractor: form.contractor.trim() || null,
-      project_engineer: form.project_engineer.trim() || null,
-      location: form.location.trim() || null,
     }
     var result = await supabase.from('projects').insert(payload).select().single()
     setSaving(false)
@@ -96,11 +91,7 @@ function NewProjectPage() {
         <Field field="project_name" label="Project Name" required={true} placeholder="e.g. Main Street Sewer Replacement" />
         <Field field="project_number" label="Project Number" placeholder="e.g. 2024-001" />
         <Field field="owner" label="Owner" placeholder="e.g. Capital Region Water" />
-        <Field field="re" label="Re" placeholder="e.g. Sewer Replacement Phase 1" />
         <Field field="contractor" label="General Contractor" placeholder="e.g. Rogele Inc." />
-        <Field field="project_engineer" label="Project Engineer" placeholder="e.g. Caleb Krauter" />
-        <Field field="location" label="Location" placeholder="e.g. Harrisburg, PA" />
-        <Field field="start_date" label="Start Date" type="date" />
 
         <button onClick={handleSave} disabled={saving || !form.project_name.trim()}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-40 transition-colors mt-4">

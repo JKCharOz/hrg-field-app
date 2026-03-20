@@ -17,6 +17,7 @@ temperature: '',
 wind: [],
 work_period: null,
 re: '',
+time_worked: '',
 })
 
 useEffect(function() {
@@ -27,6 +28,7 @@ temperature: report.weather_temp || '',
 wind: report.site_conditions ? String(report.site_conditions).split(',') : [],
 work_period: report.work_period || null,
 re: report.re || '',
+time_worked: report.time_worked || '',
 })
 }
 }, [report && report.id])
@@ -60,6 +62,13 @@ if (!report || !report.id) return
 var payload = {}
 payload[dbField] = next
 var result = await supabase.from('daily_reports').update(payload).eq('id', report.id).select().single()
+if (!result.error && result.data) { onUpdate(result.data) }
+}
+
+async function saveTimeWorked(value) {
+setLocalValues(function(prev) { return Object.assign({}, prev, { time_worked: value }) })
+if (!report || !report.id) return
+var result = await supabase.from('daily_reports').update({ time_worked: value }).eq('id', report.id).select().single()
 if (!result.error && result.data) { onUpdate(result.data) }
 }
 
@@ -136,6 +145,14 @@ style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition:
 {open && (
 <div className="border-t border-slate-700 px-4 pb-4 space-y-4">
 <div className="pt-3">
+<p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Date</p>
+<p className="text-slate-300 text-sm mb-3">{report && report.report_date ? new Date(report.report_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'No date'}</p>
+</div>
+<div>
+<p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Time Worked</p>
+<input type="text" value={localValues.time_worked} onChange={function(e) { saveTimeWorked(e.target.value) }} placeholder="e.g. 7:00 AM - 3:30 PM" className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-orange-500" />
+</div>
+<div>
 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Weather</p>
 <MultiChips options={SKY_OPTIONS} field="sky" dbField="weather_conditions" />
 </div>
