@@ -347,10 +347,7 @@ function DailyLogPage() {
                 {report && report.visitors ? report.visitors.slice(0, 60) : 'Tap to add'}
               </p>
             </button>
-            {['Sub-Contractors', 'Testing', 'RFI', 'Non-Conforming'].map(function(label) {
-              return <button key={label} onClick={function() { setModal(label) }}
-                className="w-full text-left text-slate-400 text-sm py-2.5 border-b border-slate-700 last:border-0 active:text-slate-200">{label}</button>
-            })}
+
           </div>
         </Collapsible>
 
