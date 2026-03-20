@@ -133,7 +133,7 @@ export function PhotoModal(props) {
         </div>
       </div>
       <div className="fixed bottom-0 inset-x-0 bg-slate-950/95 border-t border-slate-800 p-4">
-        <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFileChange} className="hidden" />
         <button onClick={function() { fileRef.current && fileRef.current.click() }} disabled={uploading}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-50 transition-colors">
           {uploading ? 'Uploading...' : 'Take / Add Photo'}

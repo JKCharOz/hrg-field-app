@@ -47,7 +47,7 @@ function SettingsPage() {
     setSaving(false)
     if (result.error) { setMessage({ type: 'error', text: 'Failed to send invite.' }); return }
     setEmail('')
-    setMessage({ type: 'success', text: 'Invite created. Share the app link and have them sign up with this email.' })
+    setMessage({ type: 'success', text: 'Access granted. Share the app URL and have them create an account with this email address.' })
     loadData()
   }
 
@@ -66,7 +66,7 @@ function SettingsPage() {
       <div className="p-4 space-y-6 pb-24">
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-4">
           <p className="text-slate-200 font-semibold">Invite User</p>
-          <p className="text-slate-500 text-xs">Enter their email. They must sign up with the same email to join your organization.</p>
+          <p className="text-slate-500 text-xs">Enter their email address. They will be added to your organization automatically when they sign up using this email.</p>
           {message && (
             <p className={'text-sm px-3 py-2 rounded-lg ' + (message.type === 'error' ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20')}>{message.text}</p>
           )}
