@@ -347,6 +347,26 @@ function DailyLogPage() {
                 {report && report.visitors ? report.visitors.slice(0, 60) : 'Tap to add'}
               </p>
             </button>
+            <button onClick={function() { setModal('subcontractors') }}
+              className="w-full text-left py-2.5 border-b border-slate-700 active:text-slate-200">
+              <p className="text-slate-300 text-sm">Sub-Contractors</p>
+              <p className="text-slate-500 text-xs truncate">{report && report.subcontractors ? report.subcontractors.slice(0, 60) : 'Tap to add'}</p>
+            </button>
+            <button onClick={function() { setModal('testing') }}
+              className="w-full text-left py-2.5 border-b border-slate-700 active:text-slate-200">
+              <p className="text-slate-300 text-sm">Testing</p>
+              <p className="text-slate-500 text-xs truncate">{report && report.testing_notes ? report.testing_notes.slice(0, 60) : 'Tap to add'}</p>
+            </button>
+            <button onClick={function() { setModal('rfi') }}
+              className="w-full text-left py-2.5 border-b border-slate-700 active:text-slate-200">
+              <p className="text-slate-300 text-sm">RFI</p>
+              <p className="text-slate-500 text-xs truncate">{report && report.rfi_notes ? report.rfi_notes.slice(0, 60) : 'Tap to add'}</p>
+            </button>
+            <button onClick={function() { setModal('nonconforming') }}
+              className="w-full text-left py-2.5 active:text-slate-200">
+              <p className="text-slate-300 text-sm">Non-Conforming</p>
+              <p className="text-slate-500 text-xs truncate">{report && report.nonconforming_work ? report.nonconforming_work.slice(0, 60) : 'Tap to add'}</p>
+            </button>
 
           </div>
         </Collapsible>
