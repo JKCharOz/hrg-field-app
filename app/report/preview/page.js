@@ -168,12 +168,12 @@ export function ReportTemplate(props) {
         <p style={{ fontWeight: 'bold', fontSize: '13px', margin: 0 }}>DAILY OBSERVATION REPORT</p>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', border: border }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', border: border, tableLayout: 'fixed' }}>
         <tbody>
           <tr>
-            <td style={{ ...cellPad, fontWeight: 'bold', width: '100px' }}>Project:</td>
+            <td style={{ ...cellPad, fontWeight: 'bold', width: '18%' }}>Project:</td>
             <td style={{ ...cellPad, borderRight: border }}>{project.project_name || ''}</td>
-            <td style={{ ...cellPad, fontWeight: 'bold', width: '110px' }}>Report No:</td>
+            <td style={{ ...cellPad, fontWeight: 'bold', width: '18%' }}>Report No:</td>
             <td style={cellPad}>{report.report_number || ''}</td>
           </tr>
           <tr>
