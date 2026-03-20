@@ -148,7 +148,7 @@ export function ReportTemplate(props) {
   var signatureUrl = (inspector && inspector.signature_url) ? inspector.signature_url : null
 
   var border = '1px solid #000'
-  var cellPad = { padding: '2px 4px', borderBottom: '1px solid #ccc' }
+  var cellPad = { padding: '2px 4px', borderBottom: '1px solid #ccc', fontSize: '9px' }
   var headerStyle = { backgroundColor: '#e0e0e0', padding: '2px 4px', fontWeight: 'bold', borderBottom: border, fontSize: '10px' }
 
   var equipRows = Math.max(
