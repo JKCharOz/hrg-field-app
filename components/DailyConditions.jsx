@@ -157,6 +157,10 @@ className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text
 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Work Period</p>
 <SingleChips options={WORK_PERIOD_OPTIONS} field="work_period" dbField="work_period" />
 </div>
+<div>
+<p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Re</p>
+<input type="text" value={localValues.re || ''} onChange={function(e) { saveRe(e.target.value) }} placeholder="e.g. Sewer replacement at MH-104" className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-orange-500" />
+</div>
 </div>
 )}
 </div>
