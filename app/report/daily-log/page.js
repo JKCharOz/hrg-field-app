@@ -118,45 +118,6 @@ function VisitorsModal(props) {
   )
 }
 
-function SimpleTextModal(props) {
-  var report = props.report
-  var onSave = props.onSave
-  var onClose = props.onClose
-  var field = props.field
-  var title = props.title
-  var placeholder = props.placeholder || 'Enter notes...'
-  var [text, setText] = useState((report && report[field]) || '')
-  var [saving, setSaving] = useState(false)
-
-  async function handleSave() {
-    if (saving) return
-    setSaving(true)
-    var payload = {}
-    payload[field] = text
-    var result = await supabase.from('daily_reports').update(payload).eq('id', report.id).select().single()
-    setSaving(false)
-    if (!result.error && result.data) { onSave(result.data); onClose() }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
-      <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4" onClick={function(e) { e.stopPropagation() }}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-white font-bold text-lg">{title}</h3>
-          <button onClick={onClose} className="text-slate-500 text-2xl leading-none active:text-slate-300">x</button>
-        </div>
-        <textarea value={text} onChange={function(e) { setText(e.target.value) }} rows={5}
-          placeholder={placeholder}
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500 resize-none" />
-        <button onClick={handleSave} disabled={saving}
-          className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600 disabled:opacity-40 transition-colors">
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-        <button onClick={onClose} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm active:bg-slate-800">Cancel</button>
-      </div>
-    </div>
-  )
-}
 
 function SimpleTextModal(props) {
   var report = props.report
