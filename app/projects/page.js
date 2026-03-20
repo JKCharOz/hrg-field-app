@@ -180,8 +180,12 @@ export default function ProjectsPage() {
         <p className="text-orange-400 text-xs font-semibold uppercase tracking-widest mb-0.5">HRG Field Log</p>
         <div className="flex items-center justify-between">
           <h1 className="text-white font-bold text-xl">Projects</h1>
-          <button onClick={function() { router.push('/projects/new') }}
-            className="bg-orange-500 text-white text-sm font-semibold px-4 py-2 rounded-xl active:bg-orange-600 transition-colors">+ New Project</button>
+          <div className="flex items-center gap-2">
+            <button onClick={function() { router.push('/settings') }}
+              className="text-slate-400 text-sm px-3 py-2 rounded-xl border border-slate-700 active:bg-slate-700">Settings</button>
+            <button onClick={function() { router.push('/projects/new') }}
+              className="bg-orange-500 text-white text-sm font-semibold px-4 py-2 rounded-xl active:bg-orange-600 transition-colors">+ New Project</button>
+          </div>
         </div>
       </div>
       <div className="px-4 py-4 space-y-6">
