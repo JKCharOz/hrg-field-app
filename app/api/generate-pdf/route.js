@@ -47,7 +47,7 @@ export async function POST(req) {
         var sigRes = await fetch(signatureUrl)
         var sigBuf = await sigRes.arrayBuffer()
         var sigB64 = Buffer.from(sigBuf).toString('base64')
-        sigImgTag = '<img src="data:image/png;base64,' + sigB64 + '" style="height:48px;width:200px;display:block;margin-top:4px;object-fit:contain" />'
+        sigImgTag = '<img src="https://hrg-field-app-ejc5-mu.vercel.app/hrg-logo.png" style="height:40px;object-fit:contain" />'
       } catch(e) { sigImgTag = '' }
     }
     var signatureBase64 = null
