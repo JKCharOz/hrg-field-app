@@ -80,16 +80,17 @@ function PreviewPage() {
             var el = document.getElementById('report-template')
             if (!el) { alert('Report template not found'); setGenerating(false); return }
             var imgs = el.querySelectorAll('img')
-            await Promise.all(Array.from(imgs).map(async function(img) {
+            Array.from(imgs).forEach(function(img) {
               if (img.src.startsWith('data:')) return
               try {
-                var r = await fetch(img.src)
-                var blob = await r.blob()
-                var reader = new FileReader()
-                var b64 = await new Promise(function(resolve) { reader.onloadend = function() { resolve(reader.result) }; reader.readAsDataURL(blob) })
-                img.src = b64
+                var c = document.createElement('canvas')
+                c.width = img.naturalWidth
+                c.height = img.naturalHeight
+                var ctx = c.getContext('2d')
+                ctx.drawImage(img, 0, 0)
+                img.src = c.toDataURL('image/jpeg', 0.7)
               } catch(e) {}
-            }))
+            })
             var html = el.outerHTML
             var res = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportId: data.report.id, html: html }) })
             var result = await res.json()
