@@ -146,7 +146,9 @@ export function ReportTemplate(props) {
   equipment.forEach(function(e) {
     var t = EQUIP_MAP[e.equip_type] || e.equip_type || 'Misc. Equipment'
     if (!equipByType[t]) equipByType[t] = []
-    equipByType[t].push(e.description || '')
+    var desc = e.description || ''
+    if (desc.indexOf(' - ') > 0) { desc = desc.split(' - ').slice(1).join(' - ') }
+    equipByType[t].push(desc)
   })
 
   var EQUIP_COLS = ['Excavators', 'Backhoes', 'Loaders', 'Pumps', 'Compressors']
@@ -344,7 +346,7 @@ export function ReportTemplate(props) {
               var url = 'https://jwksvwyoyxrakaagcxyk.supabase.co/storage/v1/object/public/field-photos/' + p.storage_path
               return (
                 <div key={p.id} style={{ border: '1px solid #ccc' }}>
-                  <img src={url} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
+                  <img src={url} style={{ width: '100%', height: 'auto', maxHeight: '200px', objectFit: 'contain', display: 'block', backgroundColor: '#f5f5f5' }} />
                   {p.caption && <p style={{ margin: '3px', fontSize: '8px', color: '#444' }}>{p.caption}</p>}
                 </div>
               )
