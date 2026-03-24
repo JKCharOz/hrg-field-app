@@ -103,7 +103,6 @@ function EditProjectPage() {
         <Field field="project_name" label="Project Name" required={true} placeholder="e.g. Main Street Sewer Replacement" />
         <Field field="project_number" label="Project Number" placeholder="e.g. 2024-001" />
         <Field field="owner" label="Owner" placeholder="e.g. Capital Region Water" />
-        <Field field="re" label="Re" placeholder="e.g. Sewer Replacement Phase 1" />
         <Field field="contractor" label="General Contractor" placeholder="e.g. Rogele Inc." />
         <Field field="project_engineer" label="Project Engineer" placeholder="e.g. Caleb Krauter" />
         <Field field="location" label="Location" placeholder="e.g. Harrisburg, PA" />

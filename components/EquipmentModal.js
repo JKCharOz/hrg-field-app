@@ -16,6 +16,7 @@ export function EquipmentModal(props) {
   var [contractor, setContractor] = useState((project && project.contractor) || '')
   var [saving, setSaving] = useState(false)
   var [editMode, setEditMode] = useState(false)
+  var [editingEntry, setEditingEntry] = useState(null)
   var [newLabel, setNewLabel] = useState('')
   var [addingCat, setAddingCat] = useState(false)
   var [entries, setEntries] = useState([])
@@ -73,6 +74,14 @@ export function EquipmentModal(props) {
     setCarriedOver(false)
     loadEntries()
     if (onSaved) { onSaved() }
+  }
+
+  async function saveEditEntry(id, desc, hrs) {
+    var result = await supabase.from('equipment_logs').update({ description: desc, hours: hrs || null }).eq('id', id).select().single()
+    if (!result.error && result.data) {
+      setEntries(function(prev) { return prev.map(function(e) { return e.id === id ? result.data : e }) })
+    }
+    setEditingEntry(null)
   }
 
   async function deleteEntry(id) {
@@ -151,6 +160,30 @@ export function EquipmentModal(props) {
             <button onClick={addCategory} disabled={!newLabel.trim() || addingCat}
               className="bg-orange-500 text-white font-bold px-4 rounded-xl text-sm active:bg-orange-600 disabled:opacity-40">Add</button>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (editingEntry) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4">
+          <p className="text-white font-bold">Edit Equipment</p>
+          <input type="text" defaultValue={editingEntry.description || ''}
+            id="edit-desc"
+            placeholder="Description"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          <input type="number" defaultValue={editingEntry.hours || ''}
+            id="edit-hours"
+            placeholder="Hours"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          <button onClick={function() {
+            var desc = document.getElementById('edit-desc').value
+            var hrs = document.getElementById('edit-hours').value
+            saveEditEntry(editingEntry.id, desc, hrs)
+          }} className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600">Save</button>
+          <button onClick={function() { setEditingEntry(null) }} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm">Cancel</button>
         </div>
       </div>
     )

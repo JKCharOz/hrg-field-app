@@ -91,7 +91,7 @@ export async function POST(req) {
     equipment.forEach(function(e) {
       var t = EQUIP_MAP[e.equip_type] || e.equip_type || 'Misc. Equipment'
       if (!equipByType[t]) equipByType[t] = []
-      equipByType[t].push(e.description || e.equip_type)
+      equipByType[t].push(e.description || '')
     })
 
     var SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -118,7 +118,7 @@ export async function POST(req) {
       if (!activities.length) return '<p style="color:#888;margin:0">N/A</p>'
       return activities.map(function(a) {
         var t = new Date(a.logged_at)
-        var h = t.getHours(); var mn = t.getMinutes()
+        var h = t.getUTCHours(); var mn = t.getUTCMinutes()
         var ampm = h >= 12 ? 'PM' : 'AM'
         var h12 = h % 12 || 12
         var mm = mn < 10 ? '0' + mn : '' + mn
@@ -137,7 +137,7 @@ export async function POST(req) {
       if (!photos.length) return ''
       var cells = photos.map(function(p) {
         var url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
-        return '<div style="border:1px solid #ccc;overflow:hidden"><img src="' + url + '" style="width:100%;height:180px;object-fit:cover;display:block" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
+        return '<div style="border:1px solid #ccc;overflow:hidden"><img src="' + url + '" style="width:100%;height:auto;max-height:200px;object-fit:contain;display:block;background:#f5f5f5" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
       }).join('')
       return '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Photos:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px">' + cells + '</div></div>'
     }
@@ -161,9 +161,10 @@ export async function POST(req) {
     + '<td style="padding:4px;width:25%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Site Conditions:</strong><br>' + chk(siteVals.indexOf('Dry')>=0,'Dry') + '<br>' + chk(siteVals.indexOf('Wet')>=0,'Wet') + '<br>' + chk(siteVals.indexOf('Muddy')>=0,'Muddy') + '<br>' + chk(siteVals.indexOf('Snow Covered')>=0,'Snow') + '</td>'
     + '<td style="padding:4px;width:20%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Work Period:</strong><br>' + chk(report.work_period==='Day Work','Day Work') + '<br>' + chk(report.work_period==='Night Work','Night Work') + '</td>'
     + '</tr></tbody></table>'
-    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody><tr><td style="padding:4px 6px;width:50%;border-right:1px solid #000"><strong>Contractors:</strong> ' + na(project.contractor) + '</td><td style="padding:2px 4px"><strong>Project Engineers:</strong> ' + na(project.project_engineer) + '</td></tr></tbody></table>'
+    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody><tr><td style="padding:4px 6px;width:50%;border-right:1px solid #000"><strong>Contractors:</strong> ' + na(project.general_contractor) + '</td><td style="padding:2px 4px"><strong>Project Engineers:</strong> ' + na(project.project_engineer) + '</td></tr></tbody></table>'
     + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><thead><tr style="background:#d8d8d8"><td colspan="2" style="padding:4px 6px;font-weight:bold;font-size:11px">Work Force:</td></tr></thead><tbody>'
     + '<tr><td style="padding:2px 4px;width:40%;border-right:1px solid #000;border-bottom:1px solid #ccc;font-weight:bold">Hours Worked:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + (report.hours_worked ? report.hours_worked + ' hours' : 'N/A') + '</td></tr>'
+    + '<tr><td style="padding:2px 4px;width:40%;border-right:1px solid #000;border-bottom:1px solid #ccc;font-weight:bold">Time Worked:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + na(report.time_worked) + '</td></tr>'
     + ['Foreman','Operator','Laborer','Truck Driver','Superintendent','Other'].map(function(r) { return '<tr><td style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #ccc">' + r + ':</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + (crewMap[r] || 'N/A') + '</td></tr>' }).join('')
     + '</tbody></table>'
     + '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Equipment:</div>'
