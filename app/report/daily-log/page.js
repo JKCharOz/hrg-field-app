@@ -259,12 +259,26 @@ function DailyLogPage() {
   async function handleAddLog() {
     if (!logText.trim() || addingLog || !report) return
     setAddingLog(true)
+    var raw = logText.trim()
+    var contractor = (project && project.general_contractor) || ''
+    var formatted = raw
+    try {
+      var res = await fetch('/api/format-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: raw, contractor: contractor }),
+      })
+      if (res.ok) {
+        var json = await res.json()
+        if (json.text) formatted = json.text
+      }
+    } catch (e) { /* fallback to raw note */ }
     var result = await supabase.from('activity_logs').insert({
       report_id: report.id,
       project_id: report.project_id,
       org_id: report.org_id,
       activity_type: 'other',
-      notes: logText.trim(),
+      notes: formatted,
       logged_at: new Date().toISOString(),
     }).select().single()
     setAddingLog(false)
