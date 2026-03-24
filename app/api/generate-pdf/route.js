@@ -3,6 +3,7 @@ import chromium from '@sparticuz/chromium-min'
 import { createClient } from '@supabase/supabase-js'
 import fs from 'fs'
 import path from 'path'
+import sharp from 'sharp'
 
 var SUPABASE_URL = 'https://jwksvwyoyxrakaagcxyk.supabase.co'
 
@@ -15,7 +16,6 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
   }
 
   var totalPhotoBytes = 0
-  var MAX_PHOTO_BYTES = 2500000
   var photoDebug = []
 
   for (var i = 0; i < matches.length; i++) {
@@ -31,35 +31,16 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
       } else if (m.url.includes('/storage/v1/object/public/field-photos/')) {
         var storagePath = m.url.split('/field-photos/')[1]
         if (storagePath) {
-          var buf = null
-          var debugInfo = { path: storagePath, method: null, error: null }
           try {
             var dl = await supabaseAdmin.storage.from('field-photos').download(storagePath)
-            if (dl.error) { debugInfo.error = 'dl:' + dl.error.message }
-            if (!dl.error && dl.data) { buf = Buffer.from(await dl.data.arrayBuffer()); debugInfo.method = 'download'; debugInfo.size = buf.byteLength }
-          } catch(e2) { debugInfo.error = 'dl-catch:' + e2.message }
-          if (!buf) {
-            try {
-              var pubRes = await fetch(m.url)
-              if (!pubRes.ok) { debugInfo.error = (debugInfo.error || '') + ' pub:' + pubRes.status }
-              if (pubRes.ok) { buf = Buffer.from(await pubRes.arrayBuffer()); debugInfo.method = 'public'; debugInfo.size = buf.byteLength }
-            } catch(e3) { debugInfo.error = (debugInfo.error || '') + ' pub-catch:' + e3.message }
-          }
-          if (!buf) {
-            try {
-              var authUrl = SUPABASE_URL + '/storage/v1/object/authenticated/field-photos/' + storagePath
-              var authRes = await fetch(authUrl, { headers: { 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ' } })
-              if (!authRes.ok) { debugInfo.error = (debugInfo.error || '') + ' auth:' + authRes.status }
-              if (authRes.ok) { buf = Buffer.from(await authRes.arrayBuffer()); debugInfo.method = 'auth'; debugInfo.size = buf.byteLength }
-            } catch(e4) { debugInfo.error = (debugInfo.error || '') + ' auth-catch:' + e4.message }
-          }
-          photoDebug.push(debugInfo)
-          if (buf && totalPhotoBytes + buf.byteLength <= MAX_PHOTO_BYTES) {
-            totalPhotoBytes += buf.byteLength
-            var ext = storagePath.split('.').pop().toLowerCase()
-            var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
-            b64 = 'data:' + mime + ';base64,' + buf.toString('base64')
-          }
+            if (!dl.error && dl.data) {
+              var rawBuf = Buffer.from(await dl.data.arrayBuffer())
+              var compressed = await sharp(rawBuf).resize(600, 400, { fit: 'inside' }).jpeg({ quality: 60 }).toBuffer()
+              totalPhotoBytes += compressed.byteLength
+              b64 = 'data:image/jpeg;base64,' + compressed.toString('base64')
+              photoDebug.push({ path: storagePath, original: rawBuf.byteLength, compressed: compressed.byteLength })
+            }
+          } catch(e2) { photoDebug.push({ path: storagePath, error: e2.message }) }
         }
       } else {
         var res = await fetch(m.url)
