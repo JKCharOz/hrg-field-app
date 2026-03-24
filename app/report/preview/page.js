@@ -241,7 +241,7 @@ export function ReportTemplate(props) {
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', border: border }}>
         <tbody>
           <tr>
-            <td style={{ ...cellPad, width: '50%', borderRight: border }}><strong>Contractors:</strong> {project.contractor || ''}</td>
+            <td style={{ ...cellPad, width: '50%', borderRight: border }}><strong>Contractors:</strong> {project.general_contractor || ''}</td>
             <td style={cellPad}><strong>Project Engineers:</strong> {project.project_engineer || ''}</td>
           </tr>
         </tbody>
