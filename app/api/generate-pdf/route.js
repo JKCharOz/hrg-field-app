@@ -35,7 +35,7 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
             var dl = await supabaseAdmin.storage.from('field-photos').download(storagePath)
             if (!dl.error && dl.data) {
               var rawBuf = Buffer.from(await dl.data.arrayBuffer())
-              var compressed = await sharp(rawBuf).resize(600, 400, { fit: 'inside' }).jpeg({ quality: 60 }).toBuffer()
+              var compressed = await sharp(rawBuf).rotate().resize(600, 400, { fit: 'inside' }).jpeg({ quality: 60 }).toBuffer()
               totalPhotoBytes += compressed.byteLength
               b64 = 'data:image/jpeg;base64,' + compressed.toString('base64')
               photoDebug.push({ path: storagePath, original: rawBuf.byteLength, compressed: compressed.byteLength })
@@ -101,7 +101,7 @@ export async function POST(req) {
 
     await supabaseAdmin.from('daily_reports').update({ pdf_url: pdfUrl, status: 'completed' }).eq('id', reportId)
 
-    return Response.json({ url: pdfUrl, photoDebug: photoDebug })
+    return Response.json({ url: pdfUrl })
   } catch (err) {
     console.error('PDF generation error:', err)
     return Response.json({ error: err.message }, { status: 500 })
