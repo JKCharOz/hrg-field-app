@@ -304,7 +304,7 @@ function DailyLogPage() {
 
   function showToast(msg, type) {
     setToast({ msg: msg, type: type || 'success' })
-    setTimeout(function() { setToast(null) }, 2500)
+    setTimeout(function() { setToast(null) }, type === 'error' ? 8000 : 2500)
   }
 
   var counts = {
