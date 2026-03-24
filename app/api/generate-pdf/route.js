@@ -1,6 +1,8 @@
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium-min'
 import { createClient } from '@supabase/supabase-js'
+import fs from 'fs'
+import path from 'path'
 
 export async function POST(req) {
   try {
@@ -143,7 +145,7 @@ export async function POST(req) {
       var cells = photos.map(function(p) {
         var src = photoB64Map[p.id]
         if (!src) return ''
-        return '<div style="border:1px solid #ccc;overflow:hidden"><img src="' + src + '" style="width:100%;height:auto;max-height:220px;object-fit:contain;display:block;background:#f5f5f5" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
+        return '<div style="border:1px solid #ccc;overflow:hidden;text-align:center;background:#f5f5f5"><img src="' + src + '" style="max-width:100%;max-height:200px;display:block;margin:0 auto" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
       }).filter(Boolean).join('')
       if (!cells) return ''
       return '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Photos:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px">' + cells + '</div></div>'
@@ -153,9 +155,16 @@ export async function POST(req) {
       return '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">' + label + '</div><div style="padding:6px 8px;min-height:22px;font-size:11px;white-space:pre-wrap;color:' + (value ? '#000' : '#999') + '">' + (value || 'N/A') + '</div></div>'
     }
 
+    var logoB64 = ''
+    try {
+      var logoPath = path.join(process.cwd(), 'public', 'hrg-logo.png')
+      var logoBuf = fs.readFileSync(logoPath)
+      logoB64 = 'data:image/png;base64,' + logoBuf.toString('base64')
+    } catch(e) { logoB64 = '' }
+
     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:11px;color:#000;margin:0;padding:20px}table{border-collapse:collapse}td,th{padding:3px 6px}*{box-sizing:border-box}p{margin:2px 0}</style></head><body>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px">'
-    + '<img src="https://hrg-field-app-ejc5-mu.vercel.app/hrg-logo.png" style="height:40px;object-fit:contain" onerror="this.style.display=\'none\'" />'
+    + (logoB64 ? '<img src="' + logoB64 + '" style="height:40px;object-fit:contain" />' : '')
     + '<p style="font-weight:bold;font-size:13px;margin:0">DAILY OBSERVATION REPORT</p></div>'
     + '<table style="width:100%;margin-bottom:8px;border:1px solid #000;table-layout:fixed"><tbody>'
     + '<tr><td style="font-weight:bold;width:18%;padding:3px 6px;border-bottom:1px solid #ccc">Project:</td><td style="width:32%;padding:3px 6px;border-bottom:1px solid #ccc;border-right:1px solid #000">' + na(project.project_name) + '</td><td style="font-weight:bold;width:18%;padding:3px 6px;border-bottom:1px solid #ccc">Report No:</td><td style="width:32%;padding:3px 6px;border-bottom:1px solid #ccc">' + na(report.report_number) + '</td></tr>'
