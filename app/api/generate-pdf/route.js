@@ -234,7 +234,7 @@ export async function POST(req) {
 
     await supabaseAdmin.from('daily_reports').update({ pdf_url: pdfUrl, status: 'completed' }).eq('id', reportId)
 
-    return Response.json({ url: pdfUrl })
+    return Response.json({ url: pdfUrl, debug: { photosQueried: photos.length, photosIncluded: Object.keys(photoB64Map).filter(function(k) { return photoB64Map[k] !== null }).length, totalPhotoBytes: totalPhotoBytes } })
   } catch (err) {
     console.error('PDF generation error:', err)
     return Response.json({ error: err.message }, { status: 500 })
