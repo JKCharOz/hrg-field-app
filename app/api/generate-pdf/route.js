@@ -30,10 +30,28 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
       } else if (m.url.includes('/storage/v1/object/public/field-photos/')) {
         var storagePath = m.url.split('/field-photos/')[1]
         if (storagePath) {
-          var dl = await supabaseAdmin.storage.from('field-photos').download(storagePath)
-          if (!dl.error && dl.data) {
-            var buf = Buffer.from(await dl.data.arrayBuffer())
-            if (totalPhotoBytes + buf.byteLength > MAX_PHOTO_BYTES) continue
+          var buf = null
+          // Try download via admin client first
+          try {
+            var dl = await supabaseAdmin.storage.from('field-photos').download(storagePath)
+            if (!dl.error && dl.data) { buf = Buffer.from(await dl.data.arrayBuffer()) }
+          } catch(e2) {}
+          // Fallback: fetch the public URL directly
+          if (!buf) {
+            try {
+              var pubRes = await fetch(m.url)
+              if (pubRes.ok) { buf = Buffer.from(await pubRes.arrayBuffer()) }
+            } catch(e3) {}
+          }
+          // Fallback: fetch with auth header
+          if (!buf) {
+            try {
+              var authUrl = SUPABASE_URL + '/storage/v1/object/authenticated/field-photos/' + storagePath
+              var authRes = await fetch(authUrl, { headers: { 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ' } })
+              if (authRes.ok) { buf = Buffer.from(await authRes.arrayBuffer()) }
+            } catch(e4) {}
+          }
+          if (buf && totalPhotoBytes + buf.byteLength <= MAX_PHOTO_BYTES) {
             totalPhotoBytes += buf.byteLength
             var ext = storagePath.split('.').pop().toLowerCase()
             var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
