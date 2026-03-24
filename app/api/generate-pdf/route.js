@@ -52,7 +52,7 @@ export async function POST(req) {
     var photoB64Map = {}
     var SUPABASE_URL = 'https://jwksvwyoyxrakaagcxyk.supabase.co'
     var totalPhotoBytes = 0
-    var MAX_TOTAL_BYTES = 800000
+    var MAX_TOTAL_BYTES = 3000000
     for (var pi = 0; pi < photos.length; pi++) {
       var p = photos[pi]
       try {
