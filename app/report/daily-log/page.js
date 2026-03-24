@@ -288,7 +288,7 @@ function DailyLogPage() {
     if (result.error) { showToast('Failed to add entry', 'error'); return }
     setActivities(function(prev) { return prev.concat([result.data]) })
     setLogText('')
-    if (aiError) { showToast('AI error: ' + aiError, 'error') }
+    if (aiError) { alert('AI error: ' + aiError) }
     else { showToast('Entry added', 'success') }
   }
 
