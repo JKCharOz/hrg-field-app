@@ -262,6 +262,7 @@ function DailyLogPage() {
     var raw = logText.trim()
     var contractor = (project && project.general_contractor) || ''
     var formatted = raw
+    var aiError = null
     try {
       var res = await fetch('/api/format-activity', {
         method: 'POST',
@@ -272,9 +273,9 @@ function DailyLogPage() {
       if (res.ok && json.text) {
         formatted = json.text
       } else {
-        showToast('AI: ' + (json.error || 'status ' + res.status), 'error')
+        aiError = json.error || 'status ' + res.status
       }
-    } catch (e) { showToast('AI: ' + (e.message || 'fetch failed'), 'error') }
+    } catch (e) { aiError = e.message || 'fetch failed' }
     var result = await supabase.from('activity_logs').insert({
       report_id: report.id,
       project_id: report.project_id,
@@ -287,7 +288,8 @@ function DailyLogPage() {
     if (result.error) { showToast('Failed to add entry', 'error'); return }
     setActivities(function(prev) { return prev.concat([result.data]) })
     setLogText('')
-    showToast('Entry added', 'success')
+    if (aiError) { showToast('AI error: ' + aiError, 'error') }
+    else { showToast('Entry added', 'success') }
   }
 
   async function handleEditActivity(id, updates) {
