@@ -285,7 +285,7 @@ function DailyLogPage() {
       logged_at: new Date().toISOString(),
     }).select().single()
     setAddingLog(false)
-    if (result.error) { showToast('Failed to add entry', 'error'); return }
+    if (result.error) { alert('DB error: ' + result.error.message); return }
     setActivities(function(prev) { return prev.concat([result.data]) })
     setLogText('')
     if (aiError) { alert('AI error: ' + aiError) }
