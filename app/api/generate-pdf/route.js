@@ -14,6 +14,9 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
     matches.push({ full: match[0], before: match[1], url: match[2], after: match[3] })
   }
 
+  var totalPhotoBytes = 0
+  var MAX_PHOTO_BYTES = 2500000
+
   for (var i = 0; i < matches.length; i++) {
     var m = matches[i]
     if (m.url.startsWith('data:')) continue
@@ -30,6 +33,8 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
           var dl = await supabaseAdmin.storage.from('field-photos').download(storagePath)
           if (!dl.error && dl.data) {
             var buf = Buffer.from(await dl.data.arrayBuffer())
+            if (totalPhotoBytes + buf.byteLength > MAX_PHOTO_BYTES) continue
+            totalPhotoBytes += buf.byteLength
             var ext = storagePath.split('.').pop().toLowerCase()
             var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
             b64 = 'data:' + mime + ';base64,' + buf.toString('base64')
