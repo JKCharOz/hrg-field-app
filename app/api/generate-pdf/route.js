@@ -16,6 +16,7 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
 
   var totalPhotoBytes = 0
   var MAX_PHOTO_BYTES = 2500000
+  var photoDebug = []
 
   for (var i = 0; i < matches.length; i++) {
     var m = matches[i]
@@ -31,26 +32,28 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
         var storagePath = m.url.split('/field-photos/')[1]
         if (storagePath) {
           var buf = null
-          // Try download via admin client first
+          var debugInfo = { path: storagePath, method: null, error: null }
           try {
             var dl = await supabaseAdmin.storage.from('field-photos').download(storagePath)
-            if (!dl.error && dl.data) { buf = Buffer.from(await dl.data.arrayBuffer()) }
-          } catch(e2) {}
-          // Fallback: fetch the public URL directly
+            if (dl.error) { debugInfo.error = 'dl:' + dl.error.message }
+            if (!dl.error && dl.data) { buf = Buffer.from(await dl.data.arrayBuffer()); debugInfo.method = 'download'; debugInfo.size = buf.byteLength }
+          } catch(e2) { debugInfo.error = 'dl-catch:' + e2.message }
           if (!buf) {
             try {
               var pubRes = await fetch(m.url)
-              if (pubRes.ok) { buf = Buffer.from(await pubRes.arrayBuffer()) }
-            } catch(e3) {}
+              if (!pubRes.ok) { debugInfo.error = (debugInfo.error || '') + ' pub:' + pubRes.status }
+              if (pubRes.ok) { buf = Buffer.from(await pubRes.arrayBuffer()); debugInfo.method = 'public'; debugInfo.size = buf.byteLength }
+            } catch(e3) { debugInfo.error = (debugInfo.error || '') + ' pub-catch:' + e3.message }
           }
-          // Fallback: fetch with auth header
           if (!buf) {
             try {
               var authUrl = SUPABASE_URL + '/storage/v1/object/authenticated/field-photos/' + storagePath
               var authRes = await fetch(authUrl, { headers: { 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ' } })
-              if (authRes.ok) { buf = Buffer.from(await authRes.arrayBuffer()) }
-            } catch(e4) {}
+              if (!authRes.ok) { debugInfo.error = (debugInfo.error || '') + ' auth:' + authRes.status }
+              if (authRes.ok) { buf = Buffer.from(await authRes.arrayBuffer()); debugInfo.method = 'auth'; debugInfo.size = buf.byteLength }
+            } catch(e4) { debugInfo.error = (debugInfo.error || '') + ' auth-catch:' + e4.message }
           }
+          photoDebug.push(debugInfo)
           if (buf && totalPhotoBytes + buf.byteLength <= MAX_PHOTO_BYTES) {
             totalPhotoBytes += buf.byteLength
             var ext = storagePath.split('.').pop().toLowerCase()
@@ -72,7 +75,7 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
       html = html.replace(m.full, '<img' + m.before + 'src="' + b64 + '"' + m.after + '>')
     }
   }
-  return html
+  return { html: html, photoDebug: photoDebug }
 }
 
 export async function POST(req) {
@@ -91,7 +94,9 @@ export async function POST(req) {
     if (repResult.error || !repResult.data) { return Response.json({ error: 'Report not found' }, { status: 404 }) }
     var report = repResult.data
 
-    var processedHtml = await replaceImagesWithBase64(clientHtml, supabaseAdmin)
+    var result = await replaceImagesWithBase64(clientHtml, supabaseAdmin)
+    var processedHtml = result.html
+    var photoDebug = result.photoDebug
 
     var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:10px;color:#000;margin:0;padding:16px}table{border-collapse:collapse}*{box-sizing:border-box}p{margin:2px 0}img{max-width:100%}</style></head><body>' + processedHtml + '</body></html>'
 
@@ -115,7 +120,7 @@ export async function POST(req) {
 
     await supabaseAdmin.from('daily_reports').update({ pdf_url: pdfUrl, status: 'completed' }).eq('id', reportId)
 
-    return Response.json({ url: pdfUrl })
+    return Response.json({ url: pdfUrl, photoDebug: photoDebug })
   } catch (err) {
     console.error('PDF generation error:', err)
     return Response.json({ error: err.message }, { status: 500 })
