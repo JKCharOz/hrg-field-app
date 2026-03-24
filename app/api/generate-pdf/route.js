@@ -53,19 +53,26 @@ export async function POST(req) {
     var SUPABASE_URL = 'https://jwksvwyoyxrakaagcxyk.supabase.co'
     var totalPhotoBytes = 0
     var MAX_TOTAL_BYTES = 3000000
+    console.log('Photos found:', photos.length, photos.map(function(p) { return { id: p.id, path: p.storage_path, is_report: p.is_report_photo } }))
     for (var pi = 0; pi < photos.length; pi++) {
       var p = photos[pi]
       try {
         var url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
+        console.log('Fetching photo:', url)
         var res = await fetch(url)
+        console.log('Photo response:', res.status, res.headers.get('content-type'))
+        if (!res.ok) { console.log('Photo fetch failed:', res.status); photoB64Map[p.id] = null; continue }
         var buf = await res.arrayBuffer()
-        if (totalPhotoBytes + buf.byteLength > MAX_TOTAL_BYTES) { photoB64Map[p.id] = null; continue }
+        console.log('Photo size:', buf.byteLength, 'total so far:', totalPhotoBytes)
+        if (totalPhotoBytes + buf.byteLength > MAX_TOTAL_BYTES) { console.log('Skipping photo - over budget'); photoB64Map[p.id] = null; continue }
         totalPhotoBytes += buf.byteLength
         var ext = p.file_name ? p.file_name.split('.').pop().toLowerCase() : 'jpeg'
         var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
         photoB64Map[p.id] = 'data:' + mime + ';base64,' + Buffer.from(buf).toString('base64')
-      } catch(e) { photoB64Map[p.id] = null }
+        console.log('Photo included:', p.id)
+      } catch(e) { console.log('Photo error:', e.message); photoB64Map[p.id] = null }
     }
+    console.log('Final photoB64Map keys:', Object.keys(photoB64Map), 'non-null:', Object.keys(photoB64Map).filter(function(k) { return photoB64Map[k] !== null }).length)
 
     var delivered = materials.filter(function(m) { return m.is_delivery === true })
     var installed = materials.filter(function(m) { return m.is_delivery === false })
