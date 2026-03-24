@@ -79,7 +79,6 @@ function PreviewPage() {
           var res = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportId: data.report.id }) })
           var result = await res.json()
           setGenerating(false)
-          if (result.debug) { alert('DEBUG photos: ' + JSON.stringify(result.debug)) }
           if (result.url) { setPdfUrl(result.url); window.open(result.url, '_blank') }
           else { alert('PDF generation failed: ' + (result.error || 'unknown error') + (result.stack ? '\n\n' + result.stack.slice(0,200) : '')) }
         }} disabled={generating}
