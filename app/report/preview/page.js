@@ -80,17 +80,31 @@ function PreviewPage() {
             var el = document.getElementById('report-template')
             if (!el) { alert('Report template not found'); setGenerating(false); return }
             var imgs = el.querySelectorAll('img')
-            Array.from(imgs).forEach(function(img) {
-              if (img.src.startsWith('data:')) return
-              try {
-                var c = document.createElement('canvas')
-                c.width = img.naturalWidth
-                c.height = img.naturalHeight
-                var ctx = c.getContext('2d')
-                ctx.drawImage(img, 0, 0)
-                img.src = c.toDataURL('image/jpeg', 0.7)
-              } catch(e) {}
-            })
+            await Promise.all(Array.from(imgs).map(function(img) {
+              if (img.src.startsWith('data:')) return Promise.resolve()
+              return new Promise(function(resolve) {
+                var newImg = new Image()
+                newImg.crossOrigin = 'anonymous'
+                newImg.onload = function() {
+                  try {
+                    var c = document.createElement('canvas')
+                    c.width = newImg.naturalWidth
+                    c.height = newImg.naturalHeight
+                    var ctx = c.getContext('2d')
+                    var isPng = img.src.toLowerCase().endsWith('.png')
+                    if (!isPng) {
+                      ctx.fillStyle = '#fff'
+                      ctx.fillRect(0, 0, c.width, c.height)
+                    }
+                    ctx.drawImage(newImg, 0, 0)
+                    img.src = isPng ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.7)
+                  } catch(e) {}
+                  resolve()
+                }
+                newImg.onerror = function() { resolve() }
+                newImg.src = img.src
+              })
+            }))
             var html = el.outerHTML
             var res = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportId: data.report.id, html: html }) })
             var result = await res.json()
@@ -155,7 +169,7 @@ export function ReportTemplate(props) {
   equipment.forEach(function(e) {
     var t = EQUIP_MAP[e.equip_type] || e.equip_type || 'Misc. Equipment'
     if (!equipByType[t]) equipByType[t] = []
-    equipByType[t].push(e.description || e.equip_type)
+    equipByType[t].push(e.description || '')
   })
 
   var EQUIP_COLS = ['Excavators', 'Backhoes', 'Loaders', 'Pumps', 'Compressors']
@@ -276,13 +290,13 @@ export function ReportTemplate(props) {
         <div style={headerStyle}>Equipment:</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>{EQUIP_COLS.map(function(col) { return <th key={col} style={{ padding: '2px 4px', borderRight: border, borderBottom: border, fontWeight: 'bold', textDecoration: 'underline', fontSize: '9px', textAlign: 'left', width: '20%' }}>{col}</th> })}</tr>
+            <tr style={{ backgroundColor: '#f0f0f0' }}>{EQUIP_COLS.map(function(col) { return <th key={col} style={{ padding: '2px 4px', borderRight: border, borderBottom: border, fontWeight: 'bold', fontSize: '9px', textAlign: 'left', width: '20%' }}>{col}</th> })}</tr>
           </thead>
           <tbody>
             {Array.from({ length: equipRows }).map(function(_, i) {
               return <tr key={i}>{EQUIP_COLS.map(function(col) { var items = equipByType[col] || []; return <td key={col} style={{ padding: '2px 4px', borderRight: border, borderBottom: '1px solid #eee', fontSize: '9px' }}>{items[i] || ''}</td> })}</tr>
             })}
-            <tr>{EQUIP_COLS2.map(function(col) { return <th key={col} style={{ padding: '2px 4px', borderRight: border, borderBottom: border, borderTop: border, fontWeight: 'bold', textDecoration: 'underline', fontSize: '9px', textAlign: 'left' }}>{col}</th> })}</tr>
+            <tr style={{ backgroundColor: '#f0f0f0' }}>{EQUIP_COLS2.map(function(col) { return <th key={col} style={{ padding: '2px 4px', borderRight: border, borderBottom: border, borderTop: border, fontWeight: 'bold', fontSize: '9px', textAlign: 'left' }}>{col}</th> })}</tr>
             {Array.from({ length: equipRows }).map(function(_, i) {
               return <tr key={'b' + i}>{EQUIP_COLS2.map(function(col) { var items = equipByType[col] || []; return <td key={col} style={{ padding: '2px 4px', borderRight: border, borderBottom: '1px solid #eee', fontSize: '9px' }}>{items[i] || ''}</td> })}</tr>
             })}
@@ -353,7 +367,7 @@ export function ReportTemplate(props) {
               var url = 'https://jwksvwyoyxrakaagcxyk.supabase.co/storage/v1/object/public/field-photos/' + p.storage_path
               return (
                 <div key={p.id} style={{ border: '1px solid #ccc' }}>
-                  <img src={url} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
+                  <img crossOrigin="anonymous" src={url} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
                   {p.caption && <p style={{ margin: '3px', fontSize: '8px', color: '#444' }}>{p.caption}</p>}
                 </div>
               )
@@ -367,7 +381,7 @@ export function ReportTemplate(props) {
           <tr>
             <td style={{ padding: '4px 6px', width: '70%', borderRight: border }}>
               Signed by: {signedBy}
-              {signatureUrl && <img src={signatureUrl} style={{ height: '32px', display: 'inline-block', marginLeft: '8px', verticalAlign: 'middle', objectFit: 'contain' }} />}
+              {signatureUrl && <img crossOrigin="anonymous" src={signatureUrl} style={{ height: '32px', display: 'inline-block', marginLeft: '8px', verticalAlign: 'middle', objectFit: 'contain' }} />}
             </td>
             <td style={{ padding: '4px 6px' }}>Date: {reportDate}</td>
           </tr>
