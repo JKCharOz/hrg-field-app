@@ -272,9 +272,9 @@ function DailyLogPage() {
       if (res.ok && json.text) {
         formatted = json.text
       } else {
-        console.warn('format-activity failed:', json.error || res.status)
+        showToast('AI: ' + (json.error || 'status ' + res.status), 'error')
       }
-    } catch (e) { console.warn('format-activity fetch error:', e) }
+    } catch (e) { showToast('AI: ' + (e.message || 'fetch failed'), 'error') }
     var result = await supabase.from('activity_logs').insert({
       report_id: report.id,
       project_id: report.project_id,
