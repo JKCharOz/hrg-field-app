@@ -49,20 +49,21 @@ export async function POST(req) {
 
     var photoB64Map = {}
     var SUPABASE_URL = 'https://jwksvwyoyxrakaagcxyk.supabase.co'
-    await Promise.all(photos.map(async function(p) {
+    var totalPhotoBytes = 0
+    var MAX_TOTAL_BYTES = 800000
+    for (var pi = 0; pi < photos.length; pi++) {
+      var p = photos[pi]
       try {
-        var url = SUPABASE_URL + '/storage/v1/render/image/public/field-photos/' + p.storage_path + '?width=400&quality=60'
+        var url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
         var res = await fetch(url)
-        if (!res.ok) {
-          url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
-          res = await fetch(url)
-        }
         var buf = await res.arrayBuffer()
+        if (totalPhotoBytes + buf.byteLength > MAX_TOTAL_BYTES) { photoB64Map[p.id] = null; continue }
+        totalPhotoBytes += buf.byteLength
         var ext = p.file_name ? p.file_name.split('.').pop().toLowerCase() : 'jpeg'
         var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
         photoB64Map[p.id] = 'data:' + mime + ';base64,' + Buffer.from(buf).toString('base64')
       } catch(e) { photoB64Map[p.id] = null }
-    }))
+    }
 
     var delivered = materials.filter(function(m) { return m.is_delivery === true })
     var installed = materials.filter(function(m) { return m.is_delivery === false })
