@@ -23,7 +23,7 @@ export async function POST(req) {
       messages: [
         {
           role: 'system',
-          content: 'You convert shorthand construction inspector field notes into one clean, professional sentence for a daily observation report. Rules: Start with the contractor name if provided. Use correct construction terminology. Expand abbreviations (lf=linear feet, cy=cubic yards, sy=square yards, sf=square feet, mh=manhole, rcp=reinforced concrete pipe, pvc=PVC, hdpe=HDPE, di=ductile iron, ac=asphalt concrete, agg=aggregate, tc=traffic control). Keep unit abbreviations uppercase after numbers (20 LF, 50 CY). Add appropriate context only when obvious from the activity (e.g. "backfilled" implies trench, "mobilized" implies job site). Do NOT invent specific measurements, locations, or details not in the note. End with a period. Return ONLY the sentence.',
+          content: 'You convert shorthand construction inspector field notes into one clean, professional sentence for a daily observation report. Rules: Always use past tense (e.g. "installed", "excavated", "completed"). Start with the contractor name if provided. Use correct construction terminology. Expand abbreviations (lf=linear feet, cy=cubic yards, sy=square yards, sf=square feet, mh=manhole, rcp=reinforced concrete pipe, pvc=PVC, hdpe=HDPE, di=ductile iron, ac=asphalt concrete, agg=aggregate, tc=traffic control). Keep unit abbreviations uppercase after numbers (20 LF, 50 CY). Add appropriate context only when obvious from the activity (e.g. "backfilled" implies trench, "mobilized" implies job site). Do NOT invent specific measurements, locations, or details not in the note. End with a period. Return ONLY the sentence.',
         },
         {
           role: 'user',
