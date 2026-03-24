@@ -76,11 +76,27 @@ function PreviewPage() {
         <p className="text-white text-sm font-semibold">Report Preview</p>
         <button onClick={async function() {
           setGenerating(true)
-          var res = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportId: data.report.id }) })
-          var result = await res.json()
-          setGenerating(false)
-          if (result.url) { setPdfUrl(result.url); window.open(result.url, '_blank') }
-          else { alert('PDF generation failed: ' + (result.error || 'unknown error') + (result.stack ? '\n\n' + result.stack.slice(0,200) : '')) }
+          try {
+            var el = document.getElementById('report-template')
+            if (!el) { alert('Report template not found'); setGenerating(false); return }
+            var imgs = el.querySelectorAll('img')
+            await Promise.all(Array.from(imgs).map(async function(img) {
+              if (img.src.startsWith('data:')) return
+              try {
+                var r = await fetch(img.src)
+                var blob = await r.blob()
+                var reader = new FileReader()
+                var b64 = await new Promise(function(resolve) { reader.onloadend = function() { resolve(reader.result) }; reader.readAsDataURL(blob) })
+                img.src = b64
+              } catch(e) {}
+            }))
+            var html = el.outerHTML
+            var res = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportId: data.report.id, html: html }) })
+            var result = await res.json()
+            setGenerating(false)
+            if (result.url) { setPdfUrl(result.url); window.open(result.url, '_blank') }
+            else { alert('PDF generation failed: ' + (result.error || 'unknown error')) }
+          } catch(e) { setGenerating(false); alert('Error: ' + e.message) }
         }} disabled={generating}
           className="bg-orange-500 text-white text-sm font-semibold px-4 py-2 rounded-xl disabled:opacity-50 active:bg-orange-600">
           {generating ? 'Generating...' : 'Generate PDF'}
