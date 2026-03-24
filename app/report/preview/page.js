@@ -79,32 +79,6 @@ function PreviewPage() {
           try {
             var el = document.getElementById('report-template')
             if (!el) { alert('Report template not found'); setGenerating(false); return }
-            var imgs = el.querySelectorAll('img')
-            await Promise.all(Array.from(imgs).map(function(img) {
-              if (img.src.startsWith('data:')) return Promise.resolve()
-              return new Promise(function(resolve) {
-                var newImg = new Image()
-                newImg.crossOrigin = 'anonymous'
-                newImg.onload = function() {
-                  try {
-                    var c = document.createElement('canvas')
-                    c.width = newImg.naturalWidth
-                    c.height = newImg.naturalHeight
-                    var ctx = c.getContext('2d')
-                    var isPng = img.src.toLowerCase().endsWith('.png')
-                    if (!isPng) {
-                      ctx.fillStyle = '#fff'
-                      ctx.fillRect(0, 0, c.width, c.height)
-                    }
-                    ctx.drawImage(newImg, 0, 0)
-                    img.src = isPng ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.7)
-                  } catch(e) {}
-                  resolve()
-                }
-                newImg.onerror = function() { resolve() }
-                newImg.src = img.src
-              })
-            }))
             var html = el.outerHTML
             var res = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportId: data.report.id, html: html }) })
             var result = await res.json()
@@ -367,7 +341,7 @@ export function ReportTemplate(props) {
               var url = 'https://jwksvwyoyxrakaagcxyk.supabase.co/storage/v1/object/public/field-photos/' + p.storage_path
               return (
                 <div key={p.id} style={{ border: '1px solid #ccc' }}>
-                  <img crossOrigin="anonymous" src={url} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
+                  <img src={url} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
                   {p.caption && <p style={{ margin: '3px', fontSize: '8px', color: '#444' }}>{p.caption}</p>}
                 </div>
               )
@@ -381,7 +355,7 @@ export function ReportTemplate(props) {
           <tr>
             <td style={{ padding: '4px 6px', width: '70%', borderRight: border }}>
               Signed by: {signedBy}
-              {signatureUrl && <img crossOrigin="anonymous" src={signatureUrl} style={{ height: '32px', display: 'inline-block', marginLeft: '8px', verticalAlign: 'middle', objectFit: 'contain' }} />}
+              {signatureUrl && <img src={signatureUrl} style={{ height: '32px', display: 'inline-block', marginLeft: '8px', verticalAlign: 'middle', objectFit: 'contain' }} />}
             </td>
             <td style={{ padding: '4px 6px' }}>Date: {reportDate}</td>
           </tr>

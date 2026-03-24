@@ -1,11 +1,61 @@
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium-min'
 import { createClient } from '@supabase/supabase-js'
+import fs from 'fs'
+import path from 'path'
+
+var SUPABASE_URL = 'https://jwksvwyoyxrakaagcxyk.supabase.co'
+
+async function replaceImagesWithBase64(html, supabaseAdmin) {
+  var imgRegex = /<img([^>]*)src="([^"]+)"([^>]*)>/g
+  var matches = []
+  var match
+  while ((match = imgRegex.exec(html)) !== null) {
+    matches.push({ full: match[0], before: match[1], url: match[2], after: match[3] })
+  }
+
+  for (var i = 0; i < matches.length; i++) {
+    var m = matches[i]
+    if (m.url.startsWith('data:')) continue
+    var b64 = null
+
+    try {
+      if (m.url === '/hrg-logo.png' || m.url.includes('hrg-logo.png')) {
+        var logoPath = path.join(process.cwd(), 'public', 'hrg-logo.png')
+        var logoBuf = fs.readFileSync(logoPath)
+        b64 = 'data:image/png;base64,' + logoBuf.toString('base64')
+      } else if (m.url.includes('/storage/v1/object/public/field-photos/')) {
+        var storagePath = m.url.split('/field-photos/')[1]
+        if (storagePath) {
+          var dl = await supabaseAdmin.storage.from('field-photos').download(storagePath)
+          if (!dl.error && dl.data) {
+            var buf = Buffer.from(await dl.data.arrayBuffer())
+            var ext = storagePath.split('.').pop().toLowerCase()
+            var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
+            b64 = 'data:' + mime + ';base64,' + buf.toString('base64')
+          }
+        }
+      } else {
+        var res = await fetch(m.url)
+        if (res.ok) {
+          var buf2 = Buffer.from(await res.arrayBuffer())
+          var ct = res.headers.get('content-type') || 'image/png'
+          b64 = 'data:' + ct + ';base64,' + buf2.toString('base64')
+        }
+      }
+    } catch(e) {}
+
+    if (b64) {
+      html = html.replace(m.full, '<img' + m.before + 'src="' + b64 + '"' + m.after + '>')
+    }
+  }
+  return html
+}
 
 export async function POST(req) {
   try {
     var supabaseAdmin = createClient(
-      'https://jwksvwyoyxrakaagcxyk.supabase.co',
+      SUPABASE_URL,
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ'
     )
     var body = await req.json()
@@ -18,7 +68,9 @@ export async function POST(req) {
     if (repResult.error || !repResult.data) { return Response.json({ error: 'Report not found' }, { status: 404 }) }
     var report = repResult.data
 
-    var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:10px;color:#000;margin:0;padding:16px}table{border-collapse:collapse}*{box-sizing:border-box}p{margin:2px 0}img{max-width:100%}</style></head><body>' + clientHtml + '</body></html>'
+    var processedHtml = await replaceImagesWithBase64(clientHtml, supabaseAdmin)
+
+    var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:10px;color:#000;margin:0;padding:16px}table{border-collapse:collapse}*{box-sizing:border-box}p{margin:2px 0}img{max-width:100%}</style></head><body>' + processedHtml + '</body></html>'
 
     var browser = await puppeteer.launch({
       args: chromium.args,
