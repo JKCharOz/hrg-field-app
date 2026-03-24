@@ -1,8 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
 
-var client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
 export async function POST(req) {
   try {
     var body = await req.json()
@@ -10,6 +8,13 @@ export async function POST(req) {
     var contractor = (body.contractor || '').trim()
 
     if (!note) return NextResponse.json({ text: '' })
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY is not set')
+      return NextResponse.json({ text: '', error: 'missing api key' }, { status: 500 })
+    }
+
+    var client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
     var msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -36,7 +41,7 @@ export async function POST(req) {
     var text = msg.content[0].text.trim()
     return NextResponse.json({ text: text })
   } catch (e) {
-    console.error('format-activity error:', e)
-    return NextResponse.json({ text: '' }, { status: 500 })
+    console.error('format-activity error:', e.message || e)
+    return NextResponse.json({ text: '', error: e.message || 'unknown error' }, { status: 500 })
   }
 }

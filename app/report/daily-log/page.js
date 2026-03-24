@@ -268,11 +268,13 @@ function DailyLogPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: raw, contractor: contractor }),
       })
-      if (res.ok) {
-        var json = await res.json()
-        if (json.text) formatted = json.text
+      var json = await res.json()
+      if (res.ok && json.text) {
+        formatted = json.text
+      } else {
+        console.warn('format-activity failed:', json.error || res.status)
       }
-    } catch (e) { /* fallback to raw note */ }
+    } catch (e) { console.warn('format-activity fetch error:', e) }
     var result = await supabase.from('activity_logs').insert({
       report_id: report.id,
       project_id: report.project_id,
