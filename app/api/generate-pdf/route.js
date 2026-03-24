@@ -55,11 +55,9 @@ export async function POST(req) {
     for (var pi = 0; pi < photos.length; pi++) {
       var p = photos[pi]
       try {
-        var signed = await supabaseAdmin.storage.from('field-photos').createSignedUrl(p.storage_path, 60)
-        if (signed.error || !signed.data || !signed.data.signedUrl) { photoB64Map[p.id] = null; continue }
-        var res = await fetch(signed.data.signedUrl)
-        if (!res.ok) { photoB64Map[p.id] = null; continue }
-        var buf = await res.arrayBuffer()
+        var dl = await supabaseAdmin.storage.from('field-photos').download(p.storage_path)
+        if (dl.error || !dl.data) { photoB64Map[p.id] = null; continue }
+        var buf = await dl.data.arrayBuffer()
         if (totalPhotoBytes + buf.byteLength > MAX_TOTAL_BYTES) { photoB64Map[p.id] = null; continue }
         totalPhotoBytes += buf.byteLength
         var ext = p.file_name ? p.file_name.split('.').pop().toLowerCase() : 'jpeg'
