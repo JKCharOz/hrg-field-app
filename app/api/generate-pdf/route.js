@@ -12,12 +12,7 @@ export async function POST(req) {
     if (!reportId) { return Response.json({ error: 'No reportId' }, { status: 400 }) }
 
     var repResult = await supabaseAdmin.from('daily_reports').select('*').eq('id', reportId).single()
-    console.log('repResult error:', repResult.error)
-    console.log('repResult data:', repResult.data ? 'found' : 'null')
-    console.log('reportId:', reportId)
-    console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log('KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
-    if (repResult.error || !repResult.data) { return Response.json({ error: repResult.error ? JSON.stringify(repResult.error) : 'Report not found - id: ' + reportId + ' key: ' + (process.env.SUPABASE_SERVICE_ROLE_KEY ? 'exists' : 'MISSING') + ' url: ' + (process.env.NEXT_PUBLIC_SUPABASE_URL || 'MISSING') }, { status: 404 }) }
+    if (repResult.error || !repResult.data) { return Response.json({ error: 'Report not found' }, { status: 404 }) }
     var report = repResult.data
 
     var projResult = await supabaseAdmin.from('projects').select('*').eq('id', report.project_id).single()
@@ -41,23 +36,29 @@ export async function POST(req) {
       : { data: null }
     var signedBy = inspResult.data && inspResult.data.full_name ? inspResult.data.full_name : 'Inspector'
     var signatureUrl = inspResult.data && inspResult.data.signature_url ? inspResult.data.signature_url : null
+
     var sigImgTag = ''
     if (signatureUrl) {
       try {
         var sigRes = await fetch(signatureUrl)
         var sigBuf = await sigRes.arrayBuffer()
         var sigB64 = Buffer.from(sigBuf).toString('base64')
-        sigImgTag = '<img src="https://hrg-field-app-ejc5-mu.vercel.app/hrg-logo.png" style="height:40px;object-fit:contain" />'
+        sigImgTag = '<img src="data:image/png;base64,' + sigB64 + '" style="height:48px;width:200px;display:block;margin-top:4px;object-fit:contain" />'
       } catch(e) { sigImgTag = '' }
     }
-    var signatureBase64 = null
-    if (signatureUrl) {
+
+    var photoB64Map = {}
+    var SUPABASE_URL = 'https://jwksvwyoyxrakaagcxyk.supabase.co'
+    await Promise.all(photos.map(async function(p) {
       try {
-        var sigFetch = await fetch(signatureUrl)
-        var sigBuffer = await sigFetch.arrayBuffer()
-        signatureBase64 = 'data:image/png;base64,' + Buffer.from(sigBuffer).toString('base64')
-      } catch (e) { signatureBase64 = null }
-    }
+        var url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
+        var res = await fetch(url)
+        var buf = await res.arrayBuffer()
+        var ext = p.file_name ? p.file_name.split('.').pop().toLowerCase() : 'jpeg'
+        var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
+        photoB64Map[p.id] = 'data:' + mime + ';base64,' + Buffer.from(buf).toString('base64')
+      } catch(e) { photoB64Map[p.id] = null }
+    }))
 
     var delivered = materials.filter(function(m) { return m.is_delivery === true })
     var installed = materials.filter(function(m) { return m.is_delivery === false })
@@ -94,7 +95,6 @@ export async function POST(req) {
       equipByType[t].push(e.description || '')
     })
 
-    var SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
     var chk = function(v, l) { return (v ? '[X]' : '[ ]') + ' ' + l }
     var na = function(v) { return v || 'N/A' }
     var ECOLS = ['Excavators','Backhoes','Loaders','Pumps','Compressors']
@@ -136,9 +136,11 @@ export async function POST(req) {
     function photoHtml() {
       if (!photos.length) return ''
       var cells = photos.map(function(p) {
-        var url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
-        return '<div style="border:1px solid #ccc;overflow:hidden"><img src="' + url + '" style="width:100%;height:auto;max-height:200px;object-fit:contain;display:block;background:#f5f5f5" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
-      }).join('')
+        var src = photoB64Map[p.id]
+        if (!src) return ''
+        return '<div style="border:1px solid #ccc;overflow:hidden"><img src="' + src + '" style="width:100%;height:auto;max-height:220px;object-fit:contain;display:block;background:#f5f5f5" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
+      }).filter(Boolean).join('')
+      if (!cells) return ''
       return '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Photos:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px">' + cells + '</div></div>'
     }
 
@@ -148,20 +150,20 @@ export async function POST(req) {
 
     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:11px;color:#000;margin:0;padding:20px}table{border-collapse:collapse}td,th{padding:3px 6px}*{box-sizing:border-box}p{margin:2px 0}</style></head><body>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px">'
-    + '<img src="https://hrg-field-app-ejc5-mu.vercel.app/hrg-logo.png" style="height:40px;object-fit:contain" />'
+    + '<img src="https://hrg-field-app-ejc5-mu.vercel.app/hrg-logo.png" style="height:40px;object-fit:contain" onerror="this.style.display=\'none\'" />'
     + '<p style="font-weight:bold;font-size:13px;margin:0">DAILY OBSERVATION REPORT</p></div>'
     + '<table style="width:100%;margin-bottom:8px;border:1px solid #000;table-layout:fixed"><tbody>'
     + '<tr><td style="font-weight:bold;width:18%;padding:3px 6px;border-bottom:1px solid #ccc">Project:</td><td style="width:32%;padding:3px 6px;border-bottom:1px solid #ccc;border-right:1px solid #000">' + na(project.project_name) + '</td><td style="font-weight:bold;width:18%;padding:3px 6px;border-bottom:1px solid #ccc">Report No:</td><td style="width:32%;padding:3px 6px;border-bottom:1px solid #ccc">' + na(report.report_number) + '</td></tr>'
     + '<tr><td style="font-weight:bold;padding:3px 6px;border-bottom:1px solid #ccc">Owner:</td><td style="padding:3px 6px;border-bottom:1px solid #ccc;border-right:1px solid #000">' + na(project.owner) + '</td><td style="font-weight:bold;padding:3px 6px;border-bottom:1px solid #ccc">HRG Project No:</td><td style="padding:3px 6px;border-bottom:1px solid #ccc">' + na(project.project_number) + '</td></tr>'
     + '<tr><td style="font-weight:bold;padding:3px 6px">Re:</td><td style="padding:3px 6px;border-right:1px solid #000">' + na(report.re) + '</td><td style="font-weight:bold;padding:3px 6px">Date:</td><td style="padding:3px 6px">' + reportDate + '</td></tr>'
     + '</tbody></table>'
-    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody><tr>'
-    + '<td style="padding:4px;width:25%;vertical-align:top"><strong style="text-decoration:underline">Weather:</strong><br>Temp: ' + na(report.weather_temp) + '<br>' + chk(weatherVals.indexOf('Clear')>=0||weatherVals.indexOf('Sunny')>=0,'Sunny') + '<br>' + chk(weatherVals.indexOf('Rain')>=0||weatherVals.indexOf('Heavy Rain')>=0,'Rain') + '<br>' + chk(weatherVals.indexOf('Cloudy')>=0||weatherVals.indexOf('Partly Cloudy')>=0,'Overcast') + '<br>' + chk(weatherVals.indexOf('Fog')>=0,'Fog') + '</td>'
-    + '<td style="padding:4px;width:30%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Weekday:</strong><br>' + chk(weekday==='Monday','Monday') + '<br>' + chk(weekday==='Tuesday','Tuesday') + '<br>' + chk(weekday==='Wednesday','Wednesday') + '<br>' + chk(weekday==='Thursday','Thursday') + '<br>' + chk(weekday==='Friday','Friday') + '<br>' + chk(weekday==='Saturday','Saturday') + '</td>'
-    + '<td style="padding:4px;width:25%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Site Conditions:</strong><br>' + chk(siteVals.indexOf('Dry')>=0,'Dry') + '<br>' + chk(siteVals.indexOf('Wet')>=0,'Wet') + '<br>' + chk(siteVals.indexOf('Muddy')>=0,'Muddy') + '<br>' + chk(siteVals.indexOf('Snow Covered')>=0,'Snow') + '</td>'
-    + '<td style="padding:4px;width:20%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Work Period:</strong><br>' + chk(report.work_period==='Day Work','Day Work') + '<br>' + chk(report.work_period==='Night Work','Night Work') + '</td>'
+    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000;table-layout:fixed"><tbody><tr>'
+    + '<td style="padding:6px;width:22%;vertical-align:top"><strong style="text-decoration:underline">Weather:</strong><br>Temp: ' + na(report.weather_temp) + '<br>' + chk(weatherVals.indexOf('Clear')>=0,'Clear') + '<br>' + chk(weatherVals.indexOf('Cloudy')>=0,'Cloudy') + '<br>' + chk(weatherVals.indexOf('Rain')>=0,'Rain') + '<br>' + chk(weatherVals.indexOf('Snow')>=0,'Snow') + '<br>' + chk(weatherVals.indexOf('Fog')>=0,'Fog') + '</td>'
+    + '<td style="padding:6px;width:28%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Weekday:</strong><br>' + chk(weekday==='Monday','Monday') + '<br>' + chk(weekday==='Tuesday','Tuesday') + '<br>' + chk(weekday==='Wednesday','Wednesday') + '<br>' + chk(weekday==='Thursday','Thursday') + '<br>' + chk(weekday==='Friday','Friday') + '<br>' + chk(weekday==='Saturday','Saturday') + '</td>'
+    + '<td style="padding:6px;width:25%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Site Conditions:</strong><br>' + chk(siteVals.indexOf('Dry')>=0,'Dry') + '<br>' + chk(siteVals.indexOf('Wet')>=0,'Wet') + '<br>' + chk(siteVals.indexOf('Muddy')>=0,'Muddy') + '<br>' + chk(siteVals.indexOf('Snow Covered')>=0,'Snow Covered') + '</td>'
+    + '<td style="padding:6px;width:25%;vertical-align:top;border-left:1px solid #000"><strong style="text-decoration:underline">Work Period:</strong><br>' + chk(report.work_period==='Day Work','Day Work') + '<br>' + chk(report.work_period==='Night Work','Night Work') + '</td>'
     + '</tr></tbody></table>'
-    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody><tr><td style="padding:4px 6px;width:50%;border-right:1px solid #000"><strong>Contractors:</strong> ' + na(project.general_contractor) + '</td><td style="padding:2px 4px"><strong>Project Engineers:</strong> ' + na(project.project_engineer) + '</td></tr></tbody></table>'
+    + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><tbody><tr><td style="padding:4px 6px;width:50%;border-right:1px solid #000"><strong>Contractors:</strong> ' + na(project.general_contractor) + '</td><td style="padding:4px 6px"><strong>Project Engineers:</strong> ' + na(project.project_engineer) + '</td></tr></tbody></table>'
     + '<table style="width:100%;margin-bottom:8px;border:1px solid #000"><thead><tr style="background:#d8d8d8"><td colspan="2" style="padding:4px 6px;font-weight:bold;font-size:11px">Work Force:</td></tr></thead><tbody>'
     + '<tr><td style="padding:2px 4px;width:40%;border-right:1px solid #000;border-bottom:1px solid #ccc;font-weight:bold">Hours Worked:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + (report.hours_worked ? report.hours_worked + ' hours' : 'N/A') + '</td></tr>'
     + '<tr><td style="padding:2px 4px;width:40%;border-right:1px solid #000;border-bottom:1px solid #ccc;font-weight:bold">Time Worked:</td><td style="padding:2px 4px;border-bottom:1px solid #ccc">' + na(report.time_worked) + '</td></tr>'
@@ -172,21 +174,21 @@ export async function POST(req) {
     + '<tbody>' + equipRows(ECOLS)
     + '<tr>' + ECOLS2.map(function(c) { return '<th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;border-top:1px solid #000;font-weight:bold;text-decoration:underline;font-size:9px;text-align:left">' + c + '</th>' }).join('') + '</tr>'
     + equipRows(ECOLS2) + '</tbody></table></div>'
-    + labelBlock('Sub-Contractors:', '')
+    + labelBlock('Sub-Contractors:', report.subcontractors)
     + labelBlock('Visitors:', report.visitors)
     + labelBlock('Items Discussed & People Contacted:', report.items_discussed)
     + '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Work Observed:</div><div style="padding:6px 8px;min-height:40px">' + activityRows() + '</div></div>'
     + '<div style="border:1px solid #000;margin-bottom:8px"><div style="background:#d8d8d8;padding:4px 6px;font-weight:bold;border-bottom:1px solid #000;font-size:11px">Quantity Installed -- IDIQ:</div>'
     + '<table style="width:100%"><thead><tr style="background:#f0f0f0"><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:10%;text-align:left;font-size:9px">Item No.</th><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:40%;text-align:left;font-size:9px">Description</th><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:15%;text-align:left;font-size:9px">Quantity</th><th style="padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:10%;text-align:left;font-size:9px">Unit</th><th style="padding:2px 4px;border-bottom:1px solid #000;text-align:left;font-size:9px">Sheet/STA/Note</th></tr></thead>'
     + '<tbody>' + qtyRows() + '</tbody></table></div>'
-    + labelBlock('Materials Delivered:', delivered.map(function(m) { return m.material_type + ' -- ' + m.quantity + ' ' + m.unit }).join(', '))
-    + labelBlock('Testing:', '')
-    + labelBlock('RFI:', '')
-    + labelBlock('Nonconforming Work:', '')
+    + labelBlock('Materials Delivered:', delivered.map(function(m) { return m.material_type + (m.quantity ? ' -- ' + m.quantity + ' ' + (m.unit||'') : '') }).join('\n'))
+    + labelBlock('Testing:', report.testing_notes)
+    + labelBlock('RFI:', report.rfi_notes)
+    + labelBlock('Nonconforming Work:', report.nonconforming_work)
     + labelBlock('Remarks:', report.remarks)
     + photoHtml()
     + '<table style="width:100%;border:1px solid #000;margin-bottom:4px"><tbody>'
-    + '<tr><td style="padding:4px 6px;width:70%;border-right:1px solid #000">Signed by: ' + signedBy + sigImgTag + '</td><td style="padding:4px 6px">Date: ' + reportDate + '</td></tr>'
+    + '<tr><td style="padding:4px 6px;width:70%;border-right:1px solid #000">Signed by: ' + signedBy + (sigImgTag || '') + '</td><td style="padding:4px 6px">Date: ' + reportDate + '</td></tr>'
     + '<tr><td colspan="2" style="padding:4px 6px;border-top:1px solid #000">Copies: [X] File &nbsp;&nbsp; [X] Owner &nbsp;&nbsp; [ ] Other</td></tr>'
     + '</tbody></table>'
     + '</body></html>'
@@ -198,8 +200,7 @@ export async function POST(req) {
       headless: chromium.headless,
     })
     var page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle0' })
-    await new Promise(function(r) { setTimeout(r, 3000) })
+    await page.setContent(html, { waitUntil: 'domcontentloaded' })
     var pdfBuffer = await page.pdf({ format: 'Letter', printBackground: true, margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' } })
     await browser.close()
 
@@ -215,6 +216,6 @@ export async function POST(req) {
     return Response.json({ url: pdfUrl })
   } catch (err) {
     console.error('PDF generation error:', err)
-    return Response.json({ error: err.message, stack: err.stack }, { status: 500 })
+    return Response.json({ error: err.message }, { status: 500 })
   }
 }
