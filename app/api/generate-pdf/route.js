@@ -47,11 +47,22 @@ export async function POST(req) {
       } catch(e) { sigImgTag = '' }
     }
 
-    var photoUrlMap = {}
+    var photoB64Map = {}
     var SUPABASE_URL = 'https://jwksvwyoyxrakaagcxyk.supabase.co'
-    photos.forEach(function(p) {
-      photoUrlMap[p.id] = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
-    })
+    await Promise.all(photos.map(async function(p) {
+      try {
+        var url = SUPABASE_URL + '/storage/v1/render/image/public/field-photos/' + p.storage_path + '?width=400&quality=60'
+        var res = await fetch(url)
+        if (!res.ok) {
+          url = SUPABASE_URL + '/storage/v1/object/public/field-photos/' + p.storage_path
+          res = await fetch(url)
+        }
+        var buf = await res.arrayBuffer()
+        var ext = p.file_name ? p.file_name.split('.').pop().toLowerCase() : 'jpeg'
+        var mime = ext === 'png' ? 'image/png' : 'image/jpeg'
+        photoB64Map[p.id] = 'data:' + mime + ';base64,' + Buffer.from(buf).toString('base64')
+      } catch(e) { photoB64Map[p.id] = null }
+    }))
 
     var delivered = materials.filter(function(m) { return m.is_delivery === true })
     var installed = materials.filter(function(m) { return m.is_delivery === false })
@@ -129,7 +140,7 @@ export async function POST(req) {
     function photoHtml() {
       if (!photos.length) return ''
       var cells = photos.map(function(p) {
-        var src = photoUrlMap[p.id]
+        var src = photoB64Map[p.id]
         if (!src) return ''
         return '<div style="border:1px solid #ccc;overflow:hidden"><img src="' + src + '" style="width:100%;height:auto;max-height:220px;object-fit:contain;display:block;background:#f5f5f5" />' + (p.caption ? '<p style="margin:4px 6px;font-size:9px;color:#444">' + p.caption + '</p>' : '') + '</div>'
       }).filter(Boolean).join('')
@@ -193,7 +204,7 @@ export async function POST(req) {
       headless: chromium.headless,
     })
     var page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle0' })
+    await page.setContent(html, { waitUntil: 'domcontentloaded' })
     var pdfBuffer = await page.pdf({ format: 'Letter', printBackground: true, margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' } })
     await browser.close()
 
