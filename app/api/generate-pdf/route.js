@@ -58,9 +58,9 @@ export async function POST(req) {
       SUPABASE_URL,
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a3N2d3lveXhyYWthYWdjeHlrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMjk4NCwiZXhwIjoyMDg4OTk4OTg0fQ.n1xjNrR2SXydg26YbKCfzvPXCM926xr--IOeXtGprFQ'
     )
-    var body = await req.json()
-    var reportId = body.reportId
-    var clientHtml = body.html
+    var body = await req.formData()
+    var reportId = body.get('reportId')
+    var clientHtml = body.get('html')
     if (!reportId) { return Response.json({ error: 'No reportId' }, { status: 400 }) }
     if (!clientHtml) { return Response.json({ error: 'No HTML provided' }, { status: 400 }) }
 

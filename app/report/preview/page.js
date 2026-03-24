@@ -80,7 +80,10 @@ function PreviewPage() {
             var el = document.getElementById('report-template')
             if (!el) { alert('Report template not found'); setGenerating(false); return }
             var html = el.outerHTML
-            var res = await fetch('/api/generate-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportId: data.report.id, html: html }) })
+            var fd = new FormData()
+            fd.append('reportId', data.report.id)
+            fd.append('html', html)
+            var res = await fetch('/api/generate-pdf', { method: 'POST', body: fd })
             var result = await res.json()
             setGenerating(false)
             if (result.url) { setPdfUrl(result.url); window.open(result.url, '_blank') }
