@@ -9,11 +9,11 @@ export async function POST(req) {
 
     if (!note) return NextResponse.json({ text: '' })
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env['OPENAI_API_KEY']) {
       return NextResponse.json({ text: '', error: 'missing OPENAI_API_KEY' }, { status: 500 })
     }
 
-    var client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    var client = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] })
 
     var result = await client.chat.completions.create({
       model: 'gpt-4o-mini',
