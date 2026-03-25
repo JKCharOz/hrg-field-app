@@ -276,6 +276,7 @@ function DailyLogPage() {
         aiError = json.error || 'status ' + res.status
       }
     } catch (e) { aiError = e.message || 'fetch failed' }
+    alert('RAW: ' + raw + '\nFORMATTED: ' + formatted)
     var result = await supabase.from('activity_logs').insert({
       report_id: report.id,
       project_id: report.project_id,
