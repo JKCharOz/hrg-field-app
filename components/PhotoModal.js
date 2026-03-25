@@ -22,23 +22,29 @@ export function PhotoModal(props) {
   }
 
   async function handleFileChange(e) {
-    var file = e.target.files && e.target.files[0]
-    if (!file) return
+    var files = e.target.files
+    if (!files || files.length === 0) return
     setUploading(true)
-    var ext = file.name.split('.').pop()
-    var fileName = report.id + '/' + Date.now() + '.' + ext
-    var uploadResult = await supabase.storage.from('field-photos').upload(fileName, file, { upsert: false })
-    if (uploadResult.error) { setUploading(false); return }
-    var insertResult = await supabase.from('field_photos').insert({
-      report_id: report.id,
-      project_id: report.project_id,
-      org_id: report.org_id,
-      storage_path: fileName,
-      file_name: file.name,
-      is_report_photo: false,
-    }).select().single()
+    var fileArray = Array.from(files)
+    var results = await Promise.all(fileArray.map(async function(file, i) {
+      var ext = file.name.split('.').pop()
+      var fileName = report.id + '/' + Date.now() + '-' + i + '.' + ext
+      var uploadResult = await supabase.storage.from('field-photos').upload(fileName, file, { upsert: false })
+      if (uploadResult.error) return null
+      var insertResult = await supabase.from('field_photos').insert({
+        report_id: report.id,
+        project_id: report.project_id,
+        org_id: report.org_id,
+        storage_path: fileName,
+        file_name: file.name,
+        is_report_photo: false,
+      }).select().single()
+      if (!insertResult.error && insertResult.data) return insertResult.data
+      return null
+    }))
+    var newPhotos = results.filter(function(r) { return r !== null })
+    if (newPhotos.length > 0) { setPhotos(function(prev) { return prev.concat(newPhotos) }) }
     setUploading(false)
-    if (!insertResult.error && insertResult.data) { setPhotos(function(prev) { return prev.concat([insertResult.data]) }) }
     e.target.value = ''
   }
 

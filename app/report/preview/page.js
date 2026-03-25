@@ -86,7 +86,11 @@ function PreviewPage() {
             var res = await fetch('/api/generate-pdf', { method: 'POST', body: fd })
             var result = await res.json()
             setGenerating(false)
-            if (result.url) { setPdfUrl(result.url); window.open(result.url, '_blank') }
+            if (result.url) {
+              setPdfUrl(result.url)
+              setData(function(prev) { return Object.assign({}, prev, { report: Object.assign({}, prev.report, { status: 'completed', pdf_url: result.url }) }) })
+              window.open(result.url, '_blank')
+            }
             else { alert('PDF generation failed: ' + (result.error || 'unknown error')) }
           } catch(e) { setGenerating(false); alert('Error: ' + e.message) }
         }} disabled={generating}

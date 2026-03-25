@@ -13,7 +13,7 @@ export function EquipmentModal(props) {
   var [identifier, setIdentifier] = useState('')
   var [hours, setHours] = useState('')
   var [quantity, setQuantity] = useState('1')
-  var [contractor, setContractor] = useState((project && project.contractor) || '')
+  var [contractor, setContractor] = useState((project && project.general_contractor) || '')
   var [saving, setSaving] = useState(false)
   var [editMode, setEditMode] = useState(false)
   var [editingEntry, setEditingEntry] = useState(null)
@@ -76,12 +76,19 @@ export function EquipmentModal(props) {
     if (onSaved) { onSaved() }
   }
 
-  async function saveEditEntry(id, desc, hrs) {
-    var result = await supabase.from('equipment_logs').update({ description: desc, hours: hrs || null }).eq('id', id).select().single()
+  async function saveEditEntry(id, type, desc, qty, hrs) {
+    var descValue = desc.trim() ? type.trim() + ' - ' + desc.trim() : type.trim()
+    var result = await supabase.from('equipment_logs').update({
+      equip_type: type.trim(),
+      description: descValue,
+      quantity: qty || '1',
+      hours: hrs || null,
+    }).eq('id', id).select().single()
     if (!result.error && result.data) {
       setEntries(function(prev) { return prev.map(function(e) { return e.id === id ? result.data : e }) })
     }
     setEditingEntry(null)
+    if (onSaved) { onSaved() }
   }
 
   async function deleteEntry(id) {
@@ -166,22 +173,47 @@ export function EquipmentModal(props) {
   }
 
   if (editingEntry) {
+    var editDesc = editingEntry.description || ''
+    var editIdent = editDesc.indexOf(' - ') > 0 ? editDesc.split(' - ').slice(1).join(' - ') : ''
     return (
       <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
         <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4">
           <p className="text-white font-bold">Edit Equipment</p>
-          <input type="text" defaultValue={editingEntry.description || ''}
-            id="edit-desc"
-            placeholder="Description"
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
-          <input type="number" defaultValue={editingEntry.hours || ''}
-            id="edit-hours"
-            placeholder="Hours"
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Equipment Type</p>
+            <select defaultValue={editingEntry.equip_type || ''} id="edit-type"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
+              {categories.map(function(cat) { return <option key={cat.id} value={cat.label}>{cat.label}</option> })}
+            </select>
+          </div>
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Identifier / Description</p>
+            <input type="text" defaultValue={editIdent}
+              id="edit-ident"
+              placeholder="e.g. CAT 320"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Qty</p>
+              <input type="text" defaultValue={editingEntry.quantity || '1'}
+                id="edit-qty"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Hours</p>
+              <input type="number" defaultValue={editingEntry.hours || ''}
+                id="edit-hours"
+                placeholder="e.g. 8"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+            </div>
+          </div>
           <button onClick={function() {
-            var desc = document.getElementById('edit-desc').value
+            var type = document.getElementById('edit-type').value
+            var ident = document.getElementById('edit-ident').value
+            var qty = document.getElementById('edit-qty').value
             var hrs = document.getElementById('edit-hours').value
-            saveEditEntry(editingEntry.id, desc, hrs)
+            saveEditEntry(editingEntry.id, type, ident, qty, hrs)
           }} className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600">Save</button>
           <button onClick={function() { setEditingEntry(null) }} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm">Cancel</button>
         </div>
@@ -247,14 +279,24 @@ export function EquipmentModal(props) {
                   <p className="text-slate-400 text-xs font-semibold mb-1.5">{contractorName}</p>
                   <div className="space-y-1.5">
                     {grouped[contractorName].map(function(e) {
+                      var desc = e.description || e.equip_type
+                      if (desc.indexOf(' - ') > 0) { desc = desc.split(' - ').slice(1).join(' - ') }
+                      else { desc = e.equip_type }
+                      var qty = parseInt(e.quantity) || 1
+                      var label = qty > 1 ? qty + ' ' + e.equip_type + 's' : e.equip_type
+                      if (desc !== e.equip_type) { label = label + ' - ' + desc }
                       return (
                         <div key={e.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
-                          <div className="min-w-0">
-                            <span className="text-slate-200 text-sm">{e.description || e.equip_type}</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-slate-200 text-sm">{label}</span>
                             {e.hours && <span className="text-slate-500 text-xs ml-2">{e.hours} hrs</span>}
                           </div>
-                          <button onClick={function() { deleteEntry(e.id) }}
-                            className="text-slate-600 active:text-red-400 text-xs ml-3 flex-shrink-0">x</button>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <button onClick={function() { setEditingEntry(e) }}
+                              className="text-slate-500 active:text-slate-200 text-xs">Edit</button>
+                            <button onClick={function() { deleteEntry(e.id) }}
+                              className="text-slate-600 active:text-red-400 text-xs">x</button>
+                          </div>
                         </div>
                       )
                     })}
