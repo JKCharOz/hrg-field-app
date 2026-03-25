@@ -10,7 +10,7 @@ export async function POST(req) {
     if (!note) return NextResponse.json({ text: '' })
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ text: '' }, { status: 500 })
+      return NextResponse.json({ text: '', error: 'missing OPENAI_API_KEY' }, { status: 500 })
     }
 
     var client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
