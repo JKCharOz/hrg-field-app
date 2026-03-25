@@ -152,7 +152,9 @@ export function ReportTemplate(props) {
     if (!equipByType[t]) equipByType[t] = []
     var desc = e.description || ''
     if (desc.indexOf(' - ') > 0) { desc = desc.split(' - ').slice(1).join(' - ') }
-    equipByType[t].push(desc)
+    var qty = parseInt(e.quantity) || 1
+    var label = qty > 1 ? '(' + qty + ') ' + desc : desc
+    equipByType[t].push(label)
   })
 
   var EQUIP_COLS = ['Excavators', 'Backhoes', 'Loaders', 'Pumps', 'Compressors']
@@ -200,7 +202,7 @@ export function ReportTemplate(props) {
             <td style={{ ...cellPad, fontWeight: 'bold' }}>Re:</td>
             <td style={{ ...cellPad, borderRight: border }}>{report.re || ''}</td>
             <td style={{ ...cellPad, fontWeight: 'bold' }}>Date:</td>
-            <td style={cellPad}>{reportDate}</td>
+            <td style={cellPad}>{reportDate}{report.time_worked ? '  |  Time: ' + report.time_worked : ''}</td>
           </tr>
         </tbody>
       </table>
@@ -324,7 +326,7 @@ export function ReportTemplate(props) {
             {(installed.length === 0 ? Array.from({ length: 4 }).map(function(_, i) { return { id: 'empty' + i, material_type: '', quantity: '', unit: '', location_ref: '' } }) : installed).map(function(m, i) {
               return (
                 <tr key={m.id}>
-                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{installed.length > 0 ? i + 1 : ''}</td>
+                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.item_number || ''}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.material_type}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.quantity}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.unit}</td>

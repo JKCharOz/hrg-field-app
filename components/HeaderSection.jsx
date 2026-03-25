@@ -12,9 +12,10 @@ weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
 : '—'
 
 const STATUS_STYLES = {
-draft:    'bg-slate-700 text-slate-400',
-complete: 'bg-blue-900/60 text-blue-300',
-exported: 'bg-emerald-900/60 text-emerald-300',
+draft:     'bg-slate-700 text-slate-400',
+complete:  'bg-blue-900/60 text-blue-300',
+completed: 'bg-blue-900/60 text-blue-300',
+exported:  'bg-emerald-900/60 text-emerald-300',
 }
 const status = report?.status ?? 'draft'
 

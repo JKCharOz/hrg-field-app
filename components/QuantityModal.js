@@ -13,8 +13,10 @@ export function QuantityModal(props) {
   var [unit, setUnit] = useState('LF')
   var [customUnit, setCustomUnit] = useState('')
   var [locationNotes, setLocationNotes] = useState('')
+  var [itemNumber, setItemNumber] = useState('')
   var [saving, setSaving] = useState(false)
   var [editMode, setEditMode] = useState(false)
+  var [editingEntry, setEditingEntry] = useState(null)
   var [newLabel, setNewLabel] = useState('')
   var [addingPreset, setAddingPreset] = useState(false)
   var [installed, setInstalled] = useState([])
@@ -48,6 +50,7 @@ export function QuantityModal(props) {
       quantity: quantity.trim(),
       unit: finalUnit,
       location_ref: locationNotes.trim() || null,
+      item_number: itemNumber.trim() || null,
       is_delivery: false,
       logged_at: new Date().toISOString(),
     })
@@ -57,7 +60,29 @@ export function QuantityModal(props) {
     setUnit('LF')
     setCustomUnit('')
     setLocationNotes('')
+    setItemNumber('')
     loadInstalled()
+    if (onSaved) { onSaved() }
+  }
+
+  async function saveEditInstalled(id, desc, qty, u, loc, itemNo) {
+    var result = await supabase.from('materials').update({
+      material_type: desc.trim(),
+      quantity: qty.trim(),
+      unit: u,
+      location_ref: loc.trim() || null,
+      item_number: itemNo.trim() || null,
+    }).eq('id', id).select().single()
+    if (!result.error && result.data) {
+      setInstalled(function(prev) { return prev.map(function(m) { return m.id === id ? result.data : m }) })
+    }
+    setEditingEntry(null)
+    if (onSaved) { onSaved() }
+  }
+
+  async function deleteInstalled(id) {
+    await supabase.from('materials').delete().eq('id', id)
+    setInstalled(function(prev) { return prev.filter(function(m) { return m.id !== id }) })
     if (onSaved) { onSaved() }
   }
 
@@ -93,6 +118,56 @@ export function QuantityModal(props) {
         return p
       }).sort(function(a, b) { return (a.sort_order || 0) - (b.sort_order || 0) })
     })
+  }
+
+  if (editingEntry) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4">
+          <p className="text-white font-bold">Edit Quantity Installed</p>
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Description</p>
+            <input type="text" defaultValue={editingEntry.material_type || ''} id="edit-qi-desc"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Quantity</p>
+              <input type="text" defaultValue={editingEntry.quantity || ''} id="edit-qi-qty"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+            </div>
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Unit</p>
+              <select defaultValue={editingEntry.unit || 'LF'} id="edit-qi-unit"
+                className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
+                {UNITS.map(function(u) { return <option key={u} value={u}>{u}</option> })}
+              </select>
+            </div>
+          </div>
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Location / Notes</p>
+            <input type="text" defaultValue={editingEntry.location_ref || ''} id="edit-qi-loc"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          </div>
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Item No.</p>
+            <input type="text" defaultValue={editingEntry.item_number || ''} id="edit-qi-item"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          </div>
+          <button onClick={function() {
+            saveEditInstalled(
+              editingEntry.id,
+              document.getElementById('edit-qi-desc').value,
+              document.getElementById('edit-qi-qty').value,
+              document.getElementById('edit-qi-unit').value,
+              document.getElementById('edit-qi-loc').value,
+              document.getElementById('edit-qi-item').value
+            )
+          }} className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600">Save</button>
+          <button onClick={function() { setEditingEntry(null) }} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm">Cancel</button>
+        </div>
+      </div>
+    )
   }
 
   if (editMode) {
@@ -187,6 +262,12 @@ export function QuantityModal(props) {
             placeholder="e.g. MH-104 to MH-105, Station 10+00..."
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500 resize-none" />
         </div>
+        <div>
+          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Item No. (optional)</p>
+          <input type="text" value={itemNumber} onChange={function(e) { setItemNumber(e.target.value) }}
+            placeholder="e.g. 1, 2a..."
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
+        </div>
         <button onClick={handleSave} disabled={!description.trim() || !quantity.trim() || saving}
           className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600 disabled:opacity-40 transition-colors">
           {saving ? 'Saving...' : 'Add Quantity'}
@@ -200,8 +281,16 @@ export function QuantityModal(props) {
               {installed.map(function(m) {
                 return (
                   <div key={m.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
-                    <span className="text-slate-200 text-sm">{m.material_type}</span>
-                    <span className="text-orange-400 text-xs font-mono">{m.quantity} {m.unit}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-slate-200 text-sm">{m.material_type}</span>
+                      <span className="text-orange-400 text-xs font-mono ml-2">{m.quantity} {m.unit}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <button onClick={function() { setEditingEntry(m) }}
+                        className="text-slate-500 active:text-slate-200 text-xs">Edit</button>
+                      <button onClick={function() { deleteInstalled(m.id) }}
+                        className="text-slate-600 active:text-red-400 text-xs">x</button>
+                    </div>
                   </div>
                 )
               })}

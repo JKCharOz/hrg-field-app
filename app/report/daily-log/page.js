@@ -350,7 +350,13 @@ function DailyLogPage() {
               <p className="text-white font-bold text-base leading-tight truncate">{project ? project.project_name : ''}</p>
               {project && project.project_number && <p className="text-orange-400 text-xs font-mono mt-0.5">{project.project_number}</p>}
             </div>
-            {project && project.contractor && <p className="text-slate-400 text-xs text-right flex-shrink-0">{project.contractor}</p>}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-slate-500 text-xs">Report #</span>
+              <input type="number" value={report ? report.report_number || '' : ''}
+                onChange={function(e) { var val = e.target.value; setReport(function(prev) { return Object.assign({}, prev, { report_number: val }) }) }}
+                onBlur={function(e) { var val = e.target.value; if (report) { supabase.from('daily_reports').update({ report_number: parseInt(val) || null }).eq('id', report.id) } }}
+                className="w-14 bg-slate-700 border border-slate-600 rounded-lg px-2 py-1 text-white text-xs font-mono text-center focus:outline-none focus:border-orange-500" />
+            </div>
           </div>
           {project && project.location && <p className="text-slate-500 text-xs mt-1.5">{project.location}</p>}
         </div>
