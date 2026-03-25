@@ -263,20 +263,23 @@ function DailyLogPage() {
     var contractor = (project && project.general_contractor) || ''
     var formatted = raw
     var aiError = null
-    try {
-      var res = await fetch('/api/format-activity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: raw, contractor: contractor }),
-      })
-      var json = await res.json()
-      if (res.ok && json.text) {
-        formatted = json.text
-      } else {
-        aiError = json.error || 'status ' + res.status
-      }
-    } catch (e) { aiError = e.message || 'fetch failed' }
-    alert('RAW: ' + raw + '\nFORMATTED: ' + formatted + (aiError ? '\nERROR: ' + aiError : ''))
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        var res = await fetch('/api/format-activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: raw, contractor: contractor }),
+        })
+        var json = await res.json()
+        if (res.ok && json.text) {
+          formatted = json.text
+          aiError = null
+          break
+        } else {
+          aiError = json.error || 'status ' + res.status
+        }
+      } catch (e) { aiError = e.message || 'fetch failed' }
+    }
     var result = await supabase.from('activity_logs').insert({
       report_id: report.id,
       project_id: report.project_id,
