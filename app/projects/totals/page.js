@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import JSZip from 'jszip'
 
 export default function TotalsPageWrapper() {
   return (
@@ -233,6 +234,30 @@ function Empty() {
 
 function DatePhotoGroup(props) {
   var [open, setOpen] = useState(false)
+  var [zipping, setZipping] = useState(false)
+
+  async function downloadZip() {
+    setZipping(true)
+    try {
+      var zip = new JSZip()
+      await Promise.all(props.photos.map(async function(p, i) {
+        var url = supabase.storage.from('field-photos').getPublicUrl(p.storage_path).data.publicUrl
+        var res = await fetch(url)
+        if (!res.ok) return
+        var blob = await res.blob()
+        var ext = p.file_name ? p.file_name.split('.').pop() : 'jpg'
+        zip.file('photo-' + (i + 1) + '.' + ext, blob)
+      }))
+      var content = await zip.generateAsync({ type: 'blob' })
+      var a = document.createElement('a')
+      a.href = URL.createObjectURL(content)
+      a.download = props.label.replace(/[^a-zA-Z0-9]/g, '-') + '-photos.zip'
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch (e) { alert('Download failed: ' + e.message) }
+    setZipping(false)
+  }
+
   return (
     <div className="mb-2">
       <button onClick={function() { setOpen(function(o) { return !o }) }}
@@ -247,16 +272,22 @@ function DatePhotoGroup(props) {
         </div>
       </button>
       {open && (
-        <div className="grid grid-cols-4 gap-1.5 mt-1">
-          {props.photos.map(function(p) {
-            var url = supabase.storage.from('field-photos').getPublicUrl(p.storage_path).data.publicUrl
-            return (
-              <button key={p.id} onClick={function() { props.onTap(url) }}
-                className="aspect-square rounded-lg overflow-hidden bg-slate-800">
-                <img src={url} className="w-full h-full object-cover" loading="lazy" />
-              </button>
-            )
-          })}
+        <div className="mt-1">
+          <div className="grid grid-cols-4 gap-1.5">
+            {props.photos.map(function(p) {
+              var url = supabase.storage.from('field-photos').getPublicUrl(p.storage_path).data.publicUrl
+              return (
+                <button key={p.id} onClick={function() { props.onTap(url) }}
+                  className="aspect-square rounded-lg overflow-hidden bg-slate-800">
+                  <img src={url} className="w-full h-full object-cover" loading="lazy" />
+                </button>
+              )
+            })}
+          </div>
+          <button onClick={downloadZip} disabled={zipping}
+            className="w-full mt-2 py-2 text-orange-400 text-xs font-semibold border border-orange-500/30 rounded-lg active:bg-orange-500/10 disabled:opacity-50">
+            {zipping ? 'Zipping...' : 'Download ' + props.photos.length + ' Photos'}
+          </button>
         </div>
       )}
     </div>
