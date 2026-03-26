@@ -196,22 +196,7 @@ function TotalsPage() {
                 {dates.map(function(dateKey) {
                   var dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
                   var dayPhotos = photoGroups[monthKey][dateKey]
-                  return (
-                    <div key={dateKey} className="mb-3">
-                      <p className="text-slate-500 text-xs mb-1.5">{dateLabel}</p>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {dayPhotos.map(function(p) {
-                          var url = supabase.storage.from('field-photos').getPublicUrl(p.storage_path).data.publicUrl
-                          return (
-                            <button key={p.id} onClick={function() { setFullPhoto(url) }}
-                              className="aspect-square rounded-lg overflow-hidden bg-slate-800">
-                              <img src={url} className="w-full h-full object-cover" loading="lazy" />
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
+                  return <DatePhotoGroup key={dateKey} label={dateLabel} photos={dayPhotos} onTap={setFullPhoto} />
                 })}
               </div>
             )
@@ -244,6 +229,38 @@ function Section(props) {
 
 function Empty() {
   return <p className="text-slate-600 text-sm py-3 text-center">No data yet</p>
+}
+
+function DatePhotoGroup(props) {
+  var [open, setOpen] = useState(false)
+  return (
+    <div className="mb-2">
+      <button onClick={function() { setOpen(function(o) { return !o }) }}
+        className="w-full flex items-center justify-between py-1.5 active:opacity-70">
+        <span className="text-slate-500 text-xs">{props.label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-slate-600 text-xs">{props.photos.length} photos</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            className="text-slate-600" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+      </button>
+      {open && (
+        <div className="grid grid-cols-4 gap-1.5 mt-1">
+          {props.photos.map(function(p) {
+            var url = supabase.storage.from('field-photos').getPublicUrl(p.storage_path).data.publicUrl
+            return (
+              <button key={p.id} onClick={function() { props.onTap(url) }}
+                className="aspect-square rounded-lg overflow-hidden bg-slate-800">
+                <img src={url} className="w-full h-full object-cover" loading="lazy" />
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function formatNum(n) {
