@@ -13,7 +13,6 @@ export function QuantityModal(props) {
   var [unit, setUnit] = useState('LF')
   var [customUnit, setCustomUnit] = useState('')
   var [locationNotes, setLocationNotes] = useState('')
-  var [itemNumber, setItemNumber] = useState('')
   var [saving, setSaving] = useState(false)
   var [editMode, setEditMode] = useState(false)
   var [editingEntry, setEditingEntry] = useState(null)
@@ -42,7 +41,7 @@ export function QuantityModal(props) {
     if (!description.trim() || !quantity.trim() || saving) return
     setSaving(true)
     var finalUnit = unit === 'Other' ? customUnit.trim() : unit
-    await supabase.from('materials').insert({
+    var insertResult = await supabase.from('materials').insert({
       report_id: report.id,
       project_id: report.project_id,
       org_id: report.org_id,
@@ -50,28 +49,26 @@ export function QuantityModal(props) {
       quantity: quantity.trim(),
       unit: finalUnit,
       location_ref: locationNotes.trim() || null,
-      item_number: itemNumber.trim() || null,
       is_delivery: false,
       logged_at: new Date().toISOString(),
     })
     setSaving(false)
+    if (insertResult.error) { alert('Save failed: ' + insertResult.error.message); return }
     setDescription('')
     setQuantity('')
     setUnit('LF')
     setCustomUnit('')
     setLocationNotes('')
-    setItemNumber('')
     loadInstalled()
     if (onSaved) { onSaved() }
   }
 
-  async function saveEditInstalled(id, desc, qty, u, loc, itemNo) {
+  async function saveEditInstalled(id, desc, qty, u, loc) {
     var result = await supabase.from('materials').update({
       material_type: desc.trim(),
       quantity: qty.trim(),
       unit: u,
       location_ref: loc.trim() || null,
-      item_number: itemNo.trim() || null,
     }).eq('id', id).select().single()
     if (!result.error && result.data) {
       setInstalled(function(prev) { return prev.map(function(m) { return m.id === id ? result.data : m }) })
@@ -149,19 +146,13 @@ export function QuantityModal(props) {
             <input type="text" defaultValue={editingEntry.location_ref || ''} id="edit-qi-loc"
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
           </div>
-          <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Item No.</p>
-            <input type="text" defaultValue={editingEntry.item_number || ''} id="edit-qi-item"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
-          </div>
           <button onClick={function() {
             saveEditInstalled(
               editingEntry.id,
               document.getElementById('edit-qi-desc').value,
               document.getElementById('edit-qi-qty').value,
               document.getElementById('edit-qi-unit').value,
-              document.getElementById('edit-qi-loc').value,
-              document.getElementById('edit-qi-item').value
+              document.getElementById('edit-qi-loc').value
             )
           }} className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600">Save</button>
           <button onClick={function() { setEditingEntry(null) }} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm">Cancel</button>
@@ -261,12 +252,6 @@ export function QuantityModal(props) {
           <textarea value={locationNotes} onChange={function(e) { setLocationNotes(e.target.value) }} rows={2}
             placeholder="e.g. MH-104 to MH-105, Station 10+00..."
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500 resize-none" />
-        </div>
-        <div>
-          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Item No. (optional)</p>
-          <input type="text" value={itemNumber} onChange={function(e) { setItemNumber(e.target.value) }}
-            placeholder="e.g. 1, 2a..."
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
         </div>
         <button onClick={handleSave} disabled={!description.trim() || !quantity.trim() || saving}
           className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600 disabled:opacity-40 transition-colors">

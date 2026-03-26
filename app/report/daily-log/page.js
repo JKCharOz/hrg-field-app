@@ -354,7 +354,13 @@ function DailyLogPage() {
               <span className="text-slate-500 text-xs">Report #</span>
               <input type="number" value={report ? report.report_number || '' : ''}
                 onChange={function(e) { var val = e.target.value; setReport(function(prev) { return Object.assign({}, prev, { report_number: val }) }) }}
-                onBlur={function(e) { var val = e.target.value; if (report) { supabase.from('daily_reports').update({ report_number: parseInt(val) || null }).eq('id', report.id) } }}
+                onBlur={async function(e) {
+                  var val = parseInt(e.target.value) || null
+                  if (report) {
+                    var res = await supabase.from('daily_reports').update({ report_number: val }).eq('id', report.id).select().single()
+                    if (!res.error && res.data) { setReport(res.data) }
+                  }
+                }}
                 className="w-14 bg-slate-700 border border-slate-600 rounded-lg px-2 py-1 text-white text-xs font-mono text-center focus:outline-none focus:border-orange-500" />
             </div>
           </div>

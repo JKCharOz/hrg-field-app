@@ -326,7 +326,7 @@ export function ReportTemplate(props) {
             {(installed.length === 0 ? Array.from({ length: 4 }).map(function(_, i) { return { id: 'empty' + i, material_type: '', quantity: '', unit: '', location_ref: '' } }) : installed).map(function(m, i) {
               return (
                 <tr key={m.id}>
-                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.item_number || ''}</td>
+                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{installed.length > 0 ? i + 1 : ''}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.material_type}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.quantity}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.unit}</td>
