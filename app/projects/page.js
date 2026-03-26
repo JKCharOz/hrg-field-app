@@ -206,8 +206,12 @@ export default function ProjectsPage() {
                   <p className="text-white font-bold text-base">{project.project_name}</p>
                   {project.project_number && <p className="text-orange-400 text-xs font-mono">{project.project_number}</p>}
                 </div>
-                <button onClick={function() { router.push('/projects/edit?id=' + project.id) }}
-                  className="text-slate-500 text-xs px-2 py-1 border border-slate-700 rounded-lg active:bg-slate-700">Edit</button>
+                <div className="flex items-center gap-2">
+                  <button onClick={function() { router.push('/projects/totals?id=' + project.id) }}
+                    className="text-orange-400 text-xs px-2 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10">Totals</button>
+                  <button onClick={function() { router.push('/projects/edit?id=' + project.id) }}
+                    className="text-slate-500 text-xs px-2 py-1 border border-slate-700 rounded-lg active:bg-slate-700">Edit</button>
+                </div>
               </div>
               <button onClick={function() { handleProjectPress(project) }} disabled={isLoading}
                 className="w-full mb-3 bg-teal-900/40 border border-teal-700 rounded-xl px-4 py-3 text-left active:bg-teal-800/50 disabled:opacity-60 transition-colors">
