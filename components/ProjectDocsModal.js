@@ -71,42 +71,66 @@ export function ProjectDocsModal(props) {
       var data = await file.arrayBuffer()
       var wb = XLSX.read(data)
       var ws = wb.Sheets[wb.SheetNames[0]]
-      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+      // Try multiple sheets — prefer "Unit Price", then first sheet
+      var sheetNames = wb.SheetNames
+      var targetSheet = sheetNames.find(function(s) { return s.toLowerCase().indexOf('unit') >= 0 && s.toLowerCase().indexOf('price') >= 0 })
+        || sheetNames.find(function(s) { return s.toLowerCase().indexOf('bid') >= 0 })
+        || sheetNames[0]
+      var ws2 = wb.Sheets[targetSheet]
+      var rows = XLSX.utils.sheet_to_json(ws2, { header: 1, defval: '' })
 
       function cell(row, idx) { return idx >= 0 && row && idx < row.length ? String(row[idx] == null ? '' : row[idx]).trim() : '' }
 
-      // Find header row — look for a row containing "item" and "description" (case insensitive)
+      // Scan first 20 rows for a header containing "item" and "description"
       var headerIdx = -1
       var colMap = { item: 0, desc: 1, unit: 2, qty: 3 }
-      for (var h = 0; h < Math.min(rows.length, 10); h++) {
+      for (var h = 0; h < Math.min(rows.length, 20); h++) {
         var row = (rows[h] || []).map(function(c) { return String(c == null ? '' : c).toLowerCase().trim() })
-        var hasItem = row.findIndex(function(c) { return c.length > 0 && c.indexOf('item') >= 0 })
+        var hasItem = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('item') >= 0 || c.indexOf('bid') >= 0) })
         var hasDesc = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('desc') >= 0 || c.indexOf('name') >= 0) })
         if (hasItem >= 0 && hasDesc >= 0) {
           headerIdx = h
           colMap.item = hasItem
           colMap.desc = hasDesc
-          var unitCol = row.findIndex(function(c) { return c.length > 0 && c.indexOf('unit') >= 0 })
-          var qtyCol = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('qty') >= 0 || c.indexOf('quant') >= 0) })
-          colMap.unit = unitCol >= 0 ? unitCol : -1
-          colMap.qty = qtyCol >= 0 ? qtyCol : -1
+          // Look for unit and quantity columns — scan all columns
+          for (var ci = 0; ci < row.length; ci++) {
+            if (row[ci].indexOf('unit') >= 0) colMap.unit = ci
+            if (row[ci].indexOf('qty') >= 0 || row[ci].indexOf('quant') >= 0) colMap.qty = ci
+          }
           break
         }
       }
 
-      // If no header found, check if first row looks like headers (non-numeric first cell)
-      if (headerIdx === -1) {
-        var first = rows[0] || []
-        if (first.length > 0 && isNaN(parseFloat(String(first[0])))) {
-          headerIdx = 0
-        } else {
-          headerIdx = -1
+      // If header found but unit/qty not in header row, check the row below (sub-headers)
+      if (headerIdx >= 0 && (colMap.unit === 2 || colMap.qty === 3)) {
+        var subRow = (rows[headerIdx + 1] || []).map(function(c) { return String(c == null ? '' : c).toLowerCase().trim() })
+        for (var si = 0; si < subRow.length; si++) {
+          if (subRow[si].indexOf('unit') >= 0) colMap.unit = si
+          if (subRow[si].indexOf('qty') >= 0 || subRow[si].indexOf('quant') >= 0) colMap.qty = si
         }
       }
 
-      var dataRows = rows.slice(headerIdx + 1).filter(function(r) {
-        return r && r.length > 1 && cell(r, colMap.desc)
-      })
+      // Find data rows: must have a non-empty item number in column A that looks like a bid item number
+      // Skip section headers like "Original Contract", "Change Orders", totals rows
+      var stopWords = ['total', 'change order', 'original contract', 'project total']
+      var startRow = headerIdx >= 0 ? headerIdx + 1 : 0
+      // Skip sub-header rows
+      while (startRow < rows.length && cell(rows[startRow], colMap.desc).toLowerCase().indexOf('from previous') >= 0) { startRow++ }
+
+      var dataRows = []
+      for (var di = startRow; di < rows.length; di++) {
+        var r = rows[di]
+        var itemVal = cell(r, colMap.item)
+        var descVal = cell(r, colMap.desc)
+        // Stop at totals
+        var fullRow = (r || []).map(function(c) { return String(c == null ? '' : c).toLowerCase() }).join(' ')
+        var isStop = stopWords.some(function(sw) { return fullRow.indexOf(sw) >= 0 })
+        if (isStop) continue
+        // Must have an item number (numeric or like "5.1") and a description
+        if (!itemVal || !descVal) continue
+        if (!/^[\d]/.test(itemVal)) continue
+        dataRows.push(r)
+      }
 
       if (dataRows.length === 0) {
         alert('No bid items found in file. Expected columns: Item, Description, Unit, Quantity')
@@ -123,6 +147,21 @@ export function ProjectDocsModal(props) {
           return
         }
         await supabase.from('contract_items').delete().eq('project_id', project.id)
+      }
+
+      // Auto-detect unit column: find a column in data rows containing common units
+      if (dataRows.length > 0) {
+        var commonUnits = ['ls', 'lf', 'ea', 'cy', 'sy', 'sf', 'ton', 'gal']
+        var firstData = dataRows[0]
+        for (var uc = 0; uc < (firstData || []).length; uc++) {
+          var cv = String(firstData[uc] == null ? '' : firstData[uc]).toLowerCase().trim()
+          if (commonUnits.indexOf(cv) >= 0) {
+            colMap.unit = uc
+            // Quantity is likely the column before unit
+            if (uc > 0 && !isNaN(parseFloat(firstData[uc - 1]))) colMap.qty = uc - 1
+            break
+          }
+        }
       }
 
       var inserts = dataRows.map(function(r, i) {
