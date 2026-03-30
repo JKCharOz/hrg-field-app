@@ -328,9 +328,9 @@ export function ReportTemplate(props) {
                 <tr key={m.id}>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{installed.length > 0 ? i + 1 : ''}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.material_type}</td>
-                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.quantity}</td>
-                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.unit}</td>
-                  <td style={{ padding: '3px 4px', borderBottom: '1px solid #eee' }}>{m.location_ref || ''}</td>
+                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{parseFloat(m.quantity) === 0 && m.location_ref ? m.location_ref : m.quantity}</td>
+                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{parseFloat(m.quantity) === 0 && m.location_ref ? '' : m.unit}</td>
+                  <td style={{ padding: '3px 4px', borderBottom: '1px solid #eee' }}>{parseFloat(m.quantity) === 0 && m.location_ref ? '' : (m.location_ref || '')}</td>
                 </tr>
               )
             })}
