@@ -46,7 +46,7 @@ export function MaterialsModal(props) {
       project_id: report.project_id,
       org_id: report.org_id,
       material_type: materialType.trim(),
-      quantity: quantity.trim() || '0',
+      quantity: String(parseFloat(quantity) || 0),
       unit: unit,
       is_delivery: true,
       logged_at: new Date().toISOString(),

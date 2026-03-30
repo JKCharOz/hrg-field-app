@@ -46,7 +46,7 @@ export function QuantityModal(props) {
       project_id: report.project_id,
       org_id: report.org_id,
       material_type: description.trim(),
-      quantity: parseFloat(quantity) || 0,
+      quantity: String(parseFloat(quantity) || 0),
       unit: finalUnit,
       location_ref: (isNaN(parseFloat(quantity)) && quantity.trim() ? quantity.trim() + (locationNotes.trim() ? ' — ' + locationNotes.trim() : '') : locationNotes.trim()) || null,
       is_delivery: false,
