@@ -529,9 +529,15 @@ function DailyLogPage() {
 
       </div>
 
-      <div className="fixed bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-800 p-4">
+      <div className="fixed bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-800 p-4 flex gap-2">
+        <button onClick={function() { setModal('calculator') }}
+          className="bg-slate-800 border border-slate-700 text-slate-400 rounded-2xl px-4 flex items-center justify-center active:bg-slate-700 flex-shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" y1="6" x2="16" y2="6" /><line x1="8" y1="10" x2="8" y2="10.01" /><line x1="12" y1="10" x2="12" y2="10.01" /><line x1="16" y1="10" x2="16" y2="10.01" /><line x1="8" y1="14" x2="8" y2="14.01" /><line x1="12" y1="14" x2="12" y2="14.01" /><line x1="16" y1="14" x2="16" y2="14.01" /><line x1="8" y1="18" x2="16" y2="18" />
+          </svg>
+        </button>
         <button onClick={function() { router.push('/report/preview?report=' + report.id) }}
-          className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 transition-colors flex items-center justify-center gap-2">
+          className="flex-1 bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 transition-colors flex items-center justify-center gap-2">
           Preview & Generate
         </button>
       </div>
@@ -552,7 +558,8 @@ function DailyLogPage() {
       {modal === 'crew' && <CrewModal report={report} project={project} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'quantity' && <QuantityModal report={report} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'discussed' && <DiscussedModal report={report} onSave={handleReportUpdate} onClose={function() { setModal(null) }} />}
-      {modal && modal !== 'discussed' && modal !== 'remarks' && modal !== 'photo' && modal !== 'materials' && modal !== 'quantity' && modal !== 'equipment' && modal !== 'visitors' && modal !== 'crew' && modal !== 'subcontractors' && modal !== 'testing' && modal !== 'rfi' && modal !== 'nonconforming' && <PlaceholderModal title={MODAL_LABELS[modal] || modal} onClose={function() { setModal(null) }} />}
+      {modal === 'calculator' && <CalculatorModal onClose={function() { setModal(null) }} />}
+      {modal && modal !== 'discussed' && modal !== 'remarks' && modal !== 'photo' && modal !== 'materials' && modal !== 'quantity' && modal !== 'equipment' && modal !== 'visitors' && modal !== 'crew' && modal !== 'subcontractors' && modal !== 'testing' && modal !== 'rfi' && modal !== 'nonconforming' && modal !== 'calculator' && <PlaceholderModal title={MODAL_LABELS[modal] || modal} onClose={function() { setModal(null) }} />}
 
       {toast && (
         <div className="fixed top-20 inset-x-0 flex justify-center z-50 px-4" style={{ pointerEvents: 'none' }}>
@@ -561,6 +568,113 @@ function DailyLogPage() {
           </span>
         </div>
       )}
+    </div>
+  )
+}
+
+var CALC_CONVERSIONS = {
+  'LF → FT': { to: 'FT', f: 1 }, 'FT → LF': { to: 'LF', f: 1 },
+  'FT → YD': { to: 'YD', f: 1/3 }, 'YD → FT': { to: 'FT', f: 3 },
+  'CY → CF': { to: 'CF', f: 27 }, 'CF → CY': { to: 'CY', f: 1/27 },
+  'CY → tons': { to: 'tons', f: 1.4 }, 'tons → CY': { to: 'CY', f: 1/1.4 },
+  'SY → SF': { to: 'SF', f: 9 }, 'SF → SY': { to: 'SY', f: 1/9 },
+  'GAL → CF': { to: 'CF', f: 0.1337 },
+  'IN → FT': { to: 'FT', f: 1/12 }, 'FT → IN': { to: 'IN', f: 12 },
+}
+
+function CalculatorModal(props) {
+  var [mode, setMode] = useState('convert')
+  var [convKey, setConvKey] = useState(Object.keys(CALC_CONVERSIONS)[0])
+  var [inputVal, setInputVal] = useState('')
+  var [dimL, setDimL] = useState('')
+  var [dimW, setDimW] = useState('')
+  var [dimD, setDimD] = useState('')
+  var [dimUnit, setDimUnit] = useState('ft')
+
+  var conv = CALC_CONVERSIONS[convKey]
+  var cr = inputVal ? Math.round(parseFloat(inputVal) * conv.f * 100) / 100 : ''
+
+  var l = parseFloat(dimL) || 0, w = parseFloat(dimW) || 0, d = parseFloat(dimD) || 0
+  var hasDims = l > 0 && w > 0 && d > 0
+  var cfRaw = dimUnit === 'in' ? (l * w * d) / 1728 : l * w * d
+  var cf = hasDims ? Math.round(cfRaw * 100) / 100 : ''
+  var cy = hasDims ? Math.round((cfRaw / 27) * 100) / 100 : ''
+  var tons = hasDims ? Math.round((cfRaw / 27 * 1.4) * 100) / 100 : ''
+  var sfRaw = l > 0 && w > 0 ? (dimUnit === 'in' ? (l * w) / 144 : l * w) : 0
+  var sf = sfRaw ? Math.round(sfRaw * 100) / 100 : ''
+  var sy = sfRaw ? Math.round(sfRaw / 9 * 100) / 100 : ''
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={props.onClose}>
+      <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4" onClick={function(e) { e.stopPropagation() }}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-white font-bold text-lg">Unit Converter</h3>
+          <button onClick={props.onClose} className="text-slate-500 text-2xl leading-none active:text-slate-300">x</button>
+        </div>
+        <div className="flex gap-1">
+          <button onClick={function() { setMode('convert') }}
+            className={'flex-1 py-2 rounded-lg text-xs font-semibold ' + (mode === 'convert' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' : 'text-slate-500 border border-slate-700')}>
+            Convert
+          </button>
+          <button onClick={function() { setMode('dimensions') }}
+            className={'flex-1 py-2 rounded-lg text-xs font-semibold ' + (mode === 'dimensions' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' : 'text-slate-500 border border-slate-700')}>
+            L × W × D
+          </button>
+        </div>
+        {mode === 'convert' && (
+          <div className="space-y-3">
+            <select value={convKey} onChange={function(e) { setConvKey(e.target.value); setInputVal('') }}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
+              {Object.keys(CALC_CONVERSIONS).map(function(k) { return <option key={k} value={k}>{k}</option> })}
+            </select>
+            <div className="flex items-center gap-2">
+              <input type="number" value={inputVal} onChange={function(e) { setInputVal(e.target.value) }}
+                placeholder="Enter value"
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+              <span className="text-slate-500 text-sm">=</span>
+              <div className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-orange-400 text-sm font-mono min-h-[46px]">
+                {cr} {cr !== '' ? conv.to : ''}
+              </div>
+            </div>
+          </div>
+        )}
+        {mode === 'dimensions' && (
+          <div className="space-y-3">
+            <select value={dimUnit} onChange={function(e) { setDimUnit(e.target.value) }}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
+              <option value="ft">Feet</option>
+              <option value="in">Inches</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <p className="text-slate-600 text-xs mb-1">Length</p>
+                <input type="number" value={dimL} onChange={function(e) { setDimL(e.target.value) }} placeholder="L"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
+              </div>
+              <span className="text-slate-600 mt-4">×</span>
+              <div className="flex-1">
+                <p className="text-slate-600 text-xs mb-1">Width</p>
+                <input type="number" value={dimW} onChange={function(e) { setDimW(e.target.value) }} placeholder="W"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
+              </div>
+              <span className="text-slate-600 mt-4">×</span>
+              <div className="flex-1">
+                <p className="text-slate-600 text-xs mb-1">Depth</p>
+                <input type="number" value={dimD} onChange={function(e) { setDimD(e.target.value) }} placeholder="D"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
+              </div>
+            </div>
+            {(sf || hasDims) && (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 space-y-1.5">
+                {sf && <div className="flex justify-between"><span className="text-slate-400 text-sm">Area</span><span className="text-orange-400 text-sm font-mono">{sf} SF / {sy} SY</span></div>}
+                {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-sm">Volume</span><span className="text-orange-400 text-sm font-mono">{cf} CF</span></div>}
+                {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-sm">Volume</span><span className="text-orange-400 text-sm font-mono">{cy} CY</span></div>}
+                {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-sm">Weight (est.)</span><span className="text-orange-400 text-sm font-mono">{tons} tons</span></div>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
