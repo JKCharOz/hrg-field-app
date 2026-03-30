@@ -71,40 +71,41 @@ export function ProjectDocsModal(props) {
       var data = await file.arrayBuffer()
       var wb = XLSX.read(data)
       var ws = wb.Sheets[wb.SheetNames[0]]
-      var rows = XLSX.utils.sheet_to_json(ws, { header: 1 })
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+
+      function cell(row, idx) { return idx >= 0 && row && idx < row.length ? String(row[idx] == null ? '' : row[idx]).trim() : '' }
 
       // Find header row — look for a row containing "item" and "description" (case insensitive)
       var headerIdx = -1
-      var colMap = { item: -1, desc: -1, unit: -1, qty: -1 }
+      var colMap = { item: 0, desc: 1, unit: 2, qty: 3 }
       for (var h = 0; h < Math.min(rows.length, 10); h++) {
-        var row = (rows[h] || []).map(function(c) { return String(c || '').toLowerCase().trim() })
-        var hasItem = row.findIndex(function(c) { return c.indexOf('item') >= 0 })
-        var hasDesc = row.findIndex(function(c) { return c.indexOf('desc') >= 0 })
+        var row = (rows[h] || []).map(function(c) { return String(c == null ? '' : c).toLowerCase().trim() })
+        var hasItem = row.findIndex(function(c) { return c.length > 0 && c.indexOf('item') >= 0 })
+        var hasDesc = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('desc') >= 0 || c.indexOf('name') >= 0) })
         if (hasItem >= 0 && hasDesc >= 0) {
           headerIdx = h
           colMap.item = hasItem
           colMap.desc = hasDesc
-          colMap.unit = row.findIndex(function(c) { return c.indexOf('unit') >= 0 })
-          colMap.qty = row.findIndex(function(c) { return c.indexOf('qty') >= 0 || c.indexOf('quant') >= 0 })
+          var unitCol = row.findIndex(function(c) { return c.length > 0 && c.indexOf('unit') >= 0 })
+          var qtyCol = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('qty') >= 0 || c.indexOf('quant') >= 0) })
+          colMap.unit = unitCol >= 0 ? unitCol : -1
+          colMap.qty = qtyCol >= 0 ? qtyCol : -1
           break
         }
       }
 
-      // Fallback: assume columns A=item, B=desc, C=unit, D=qty
+      // If no header found, check if first row looks like headers (non-numeric first cell)
       if (headerIdx === -1) {
-        headerIdx = 0
-        colMap = { item: 0, desc: 1, unit: 2, qty: 3 }
-        // Check if first row looks like headers
         var first = rows[0] || []
-        if (first.length > 0 && isNaN(parseFloat(first[0]))) {
-          headerIdx = 0 // skip header row
+        if (first.length > 0 && isNaN(parseFloat(String(first[0])))) {
+          headerIdx = 0
         } else {
-          headerIdx = -1 // no header, start from row 0
+          headerIdx = -1
         }
       }
 
       var dataRows = rows.slice(headerIdx + 1).filter(function(r) {
-        return r && r.length > 1 && String(r[colMap.desc] || '').trim()
+        return r && r.length > 1 && cell(r, colMap.desc)
       })
 
       if (dataRows.length === 0) {
@@ -128,9 +129,9 @@ export function ProjectDocsModal(props) {
         return {
           project_id: project.id,
           org_id: project.org_id,
-          item_number: String(r[colMap.item] || '').trim(),
-          description: String(r[colMap.desc] || '').trim(),
-          unit: colMap.unit >= 0 ? String(r[colMap.unit] || '').trim() : '',
+          item_number: cell(r, colMap.item),
+          description: cell(r, colMap.desc),
+          unit: cell(r, colMap.unit),
           contract_quantity: colMap.qty >= 0 ? parseFloat(r[colMap.qty]) || 0 : 0,
           sort_order: i,
         }
