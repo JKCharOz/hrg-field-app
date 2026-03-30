@@ -13,6 +13,7 @@ export function QuantityModal(props) {
   var [unit, setUnit] = useState('LF')
   var [customUnit, setCustomUnit] = useState('')
   var [locationNotes, setLocationNotes] = useState('')
+  var [itemNumber, setItemNumber] = useState('')
   var [saving, setSaving] = useState(false)
   var [editMode, setEditMode] = useState(false)
   var [editingEntry, setEditingEntry] = useState(null)
@@ -37,6 +38,25 @@ export function QuantityModal(props) {
     if (!result.error && result.data) { setInstalled(result.data) }
   }
 
+  function buildLocationRef(item, qty, notes) {
+    var parts = []
+    if (item.trim()) parts.push('ITEM:' + item.trim())
+    if (isNaN(parseFloat(qty)) && qty.trim()) parts.push('QTYTEXT:' + qty.trim())
+    if (notes.trim()) parts.push(notes.trim())
+    return parts.length > 0 ? parts.join('|') : null
+  }
+
+  function parseLocationRef(ref) {
+    if (!ref) return { item: '', qtyText: '', notes: '' }
+    var item = '', qtyText = '', notes = []
+    ref.split('|').forEach(function(p) {
+      if (p.startsWith('ITEM:')) item = p.slice(5)
+      else if (p.startsWith('QTYTEXT:')) qtyText = p.slice(8)
+      else notes.push(p)
+    })
+    return { item: item, qtyText: qtyText, notes: notes.join('|') }
+  }
+
   async function handleSave() {
     if (!description.trim() || saving) return
     setSaving(true)
@@ -48,7 +68,7 @@ export function QuantityModal(props) {
       material_type: description.trim(),
       quantity: String(parseFloat(quantity) || 0),
       unit: finalUnit,
-      location_ref: (isNaN(parseFloat(quantity)) && quantity.trim() ? quantity.trim() + (locationNotes.trim() ? ' — ' + locationNotes.trim() : '') : locationNotes.trim()) || null,
+      location_ref: buildLocationRef(itemNumber, quantity, locationNotes),
       is_delivery: false,
       logged_at: new Date().toISOString(),
     })
@@ -59,6 +79,7 @@ export function QuantityModal(props) {
     setUnit('LF')
     setCustomUnit('')
     setLocationNotes('')
+    setItemNumber('')
     loadInstalled()
     if (onSaved) { onSaved() }
   }
@@ -66,9 +87,9 @@ export function QuantityModal(props) {
   async function saveEditInstalled(id, desc, qty, u, loc) {
     var result = await supabase.from('materials').update({
       material_type: desc.trim(),
-      quantity: qty.trim(),
+      quantity: String(parseFloat(qty) || 0),
       unit: u,
-      location_ref: loc.trim() || null,
+      location_ref: loc || null,
     }).eq('id', id).select().single()
     if (!result.error && result.data) {
       setInstalled(function(prev) { return prev.map(function(m) { return m.id === id ? result.data : m }) })
@@ -118,19 +139,28 @@ export function QuantityModal(props) {
   }
 
   if (editingEntry) {
+    var parsed = parseLocationRef(editingEntry.location_ref)
     return (
       <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
         <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4">
           <p className="text-white font-bold">Edit Quantity Installed</p>
-          <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Description</p>
-            <input type="text" defaultValue={editingEntry.material_type || ''} id="edit-qi-desc"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+          <div className="flex gap-3">
+            <div className="w-20">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Item No.</p>
+              <input type="text" defaultValue={parsed.item} id="edit-qi-item"
+                placeholder="—"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Description</p>
+              <input type="text" defaultValue={editingEntry.material_type || ''} id="edit-qi-desc"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+            </div>
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
               <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Quantity</p>
-              <input type="text" defaultValue={editingEntry.quantity || ''} id="edit-qi-qty"
+              <input type="text" defaultValue={parsed.qtyText || editingEntry.quantity || ''} id="edit-qi-qty"
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
             </div>
             <div>
@@ -143,16 +173,19 @@ export function QuantityModal(props) {
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Location / Notes</p>
-            <input type="text" defaultValue={editingEntry.location_ref || ''} id="edit-qi-loc"
+            <input type="text" defaultValue={parsed.notes} id="edit-qi-loc"
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
           </div>
           <button onClick={function() {
+            var eItem = document.getElementById('edit-qi-item').value
+            var eQty = document.getElementById('edit-qi-qty').value
+            var eLoc = document.getElementById('edit-qi-loc').value
             saveEditInstalled(
               editingEntry.id,
               document.getElementById('edit-qi-desc').value,
-              document.getElementById('edit-qi-qty').value,
+              eQty,
               document.getElementById('edit-qi-unit').value,
-              document.getElementById('edit-qi-loc').value
+              buildLocationRef(eItem, eQty, eLoc)
             )
           }} className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600">Save</button>
           <button onClick={function() { setEditingEntry(null) }} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm">Cancel</button>
@@ -218,11 +251,19 @@ export function QuantityModal(props) {
             </div>
           </div>
         )}
-        <div>
-          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Description</p>
-          <input type="text" value={description} onChange={function(e) { setDescription(e.target.value) }}
-            placeholder="e.g. 8 inch PVC pipe, DIP, RCP..."
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
+        <div className="flex gap-3">
+          <div className="w-20">
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Item No.</p>
+            <input type="text" value={itemNumber} onChange={function(e) { setItemNumber(e.target.value) }}
+              placeholder="—"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white placeholder-slate-600 text-sm text-center focus:outline-none focus:border-orange-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Description</p>
+            <input type="text" value={description} onChange={function(e) { setDescription(e.target.value) }}
+              placeholder="e.g. 8 inch PVC pipe, DIP, RCP..."
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
+          </div>
         </div>
         <div className="flex gap-3">
           <div className="flex-1">

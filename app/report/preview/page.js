@@ -324,13 +324,22 @@ export function ReportTemplate(props) {
           </thead>
           <tbody>
             {(installed.length === 0 ? Array.from({ length: 4 }).map(function(_, i) { return { id: 'empty' + i, material_type: '', quantity: '', unit: '', location_ref: '' } }) : installed).map(function(m, i) {
+              var ref = m.location_ref || ''
+              var itemNo = '', qtyText = '', notes = []
+              ref.split('|').forEach(function(p) {
+                if (p.startsWith('ITEM:')) itemNo = p.slice(5)
+                else if (p.startsWith('QTYTEXT:')) qtyText = p.slice(8)
+                else if (p) notes.push(p)
+              })
+              var displayQty = qtyText || (parseFloat(m.quantity) === 0 ? '' : m.quantity)
+              var displayUnit = qtyText ? '' : (parseFloat(m.quantity) === 0 ? '' : m.unit)
               return (
                 <tr key={m.id}>
-                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{installed.length > 0 ? i + 1 : ''}</td>
+                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{itemNo}</td>
                   <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{m.material_type}</td>
-                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{parseFloat(m.quantity) === 0 && m.location_ref ? m.location_ref : m.quantity}</td>
-                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{parseFloat(m.quantity) === 0 && m.location_ref ? '' : m.unit}</td>
-                  <td style={{ padding: '3px 4px', borderBottom: '1px solid #eee' }}>{parseFloat(m.quantity) === 0 && m.location_ref ? '' : (m.location_ref || '')}</td>
+                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{displayQty}</td>
+                  <td style={{ padding: '3px 4px', borderRight: border, borderBottom: '1px solid #eee' }}>{displayUnit}</td>
+                  <td style={{ padding: '3px 4px', borderBottom: '1px solid #eee' }}>{notes.join(' ') || ''}</td>
                 </tr>
               )
             })}
