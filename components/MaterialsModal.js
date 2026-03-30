@@ -41,7 +41,7 @@ export function MaterialsModal(props) {
   async function handleSave() {
     if (!materialType.trim() || saving) return
     setSaving(true)
-    await supabase.from('materials').insert({
+    var result = await supabase.from('materials').insert({
       report_id: report.id,
       project_id: report.project_id,
       org_id: report.org_id,
@@ -52,9 +52,12 @@ export function MaterialsModal(props) {
       logged_at: new Date().toISOString(),
     })
     setSaving(false)
+    if (result.error) { alert('Save failed: ' + result.error.message); return }
     setMaterialType('')
     setQuantity('')
-    setUnit('Tons')
+    setUnit('tons')
+    loadMaterials()
+    if (onSaved) { onSaved() }
   }
 
   async function addPreset() {

@@ -259,6 +259,7 @@ export function QuantityModal(props) {
         </button>
         <button onClick={function() { setEditMode(true) }}
           className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm active:bg-slate-800">Edit Presets</button>
+        <UnitConverter />
         {installed.length > 0 && (
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Added This Report</p>
@@ -283,6 +284,63 @@ export function QuantityModal(props) {
           </div>
         )}
         <button onClick={onClose} className="w-full border border-slate-700 text-slate-600 py-2.5 rounded-xl text-sm active:bg-slate-800">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+var CONVERSIONS = {
+  'LF → FT':   { from: 'LF', to: 'FT', factor: 1 },
+  'FT → LF':   { from: 'FT', to: 'LF', factor: 1 },
+  'FT → YD':   { from: 'FT', to: 'YD', factor: 1 / 3 },
+  'YD → FT':   { from: 'YD', to: 'FT', factor: 3 },
+  'CY → CF':   { from: 'CY', to: 'CF', factor: 27 },
+  'CF → CY':   { from: 'CF', to: 'CY', factor: 1 / 27 },
+  'CY → tons': { from: 'CY', to: 'tons', factor: 1.4 },
+  'tons → CY': { from: 'tons', to: 'CY', factor: 1 / 1.4 },
+  'SY → SF':   { from: 'SY', to: 'SF', factor: 9 },
+  'SF → SY':   { from: 'SF', to: 'SY', factor: 1 / 9 },
+  'GAL → CF':  { from: 'GAL', to: 'CF', factor: 0.1337 },
+  'IN → FT':   { from: 'IN', to: 'FT', factor: 1 / 12 },
+  'FT → IN':   { from: 'FT', to: 'IN', factor: 12 },
+}
+
+function UnitConverter() {
+  var [open, setOpen] = useState(false)
+  var [convKey, setConvKey] = useState(Object.keys(CONVERSIONS)[0])
+  var [inputVal, setInputVal] = useState('')
+
+  var conv = CONVERSIONS[convKey]
+  var result = inputVal ? (parseFloat(inputVal) * conv.factor) : ''
+  var display = result !== '' ? (Math.round(result * 100) / 100) : ''
+
+  if (!open) {
+    return (
+      <button onClick={function() { setOpen(true) }}
+        className="w-full border border-slate-700 text-slate-500 py-2.5 rounded-xl text-xs active:bg-slate-800">
+        Unit Converter
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Unit Converter</p>
+        <button onClick={function() { setOpen(false) }} className="text-slate-600 text-xs active:text-slate-300">Close</button>
+      </div>
+      <select value={convKey} onChange={function(e) { setConvKey(e.target.value); setInputVal('') }}
+        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500">
+        {Object.keys(CONVERSIONS).map(function(k) { return <option key={k} value={k}>{k}</option> })}
+      </select>
+      <div className="flex items-center gap-2">
+        <input type="number" value={inputVal} onChange={function(e) { setInputVal(e.target.value) }}
+          placeholder="Enter value"
+          className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
+        <span className="text-slate-500 text-sm">=</span>
+        <div className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-orange-400 text-sm font-mono min-h-[38px]">
+          {display} {display !== '' ? conv.to : ''}
+        </div>
       </div>
     </div>
   )
