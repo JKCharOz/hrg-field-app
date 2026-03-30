@@ -572,108 +572,126 @@ function DailyLogPage() {
   )
 }
 
-var CALC_CONVERSIONS = {
-  'LF → FT': { to: 'FT', f: 1 }, 'FT → LF': { to: 'LF', f: 1 },
-  'FT → YD': { to: 'YD', f: 1/3 }, 'YD → FT': { to: 'FT', f: 3 },
-  'CY → CF': { to: 'CF', f: 27 }, 'CF → CY': { to: 'CY', f: 1/27 },
-  'CY → tons': { to: 'tons', f: 1.4 }, 'tons → CY': { to: 'CY', f: 1/1.4 },
-  'SY → SF': { to: 'SF', f: 9 }, 'SF → SY': { to: 'SY', f: 1/9 },
-  'GAL → CF': { to: 'CF', f: 0.1337 },
-  'IN → FT': { to: 'FT', f: 1/12 }, 'FT → IN': { to: 'IN', f: 12 },
-}
-
 function CalculatorModal(props) {
-  var [mode, setMode] = useState('convert')
-  var [convKey, setConvKey] = useState(Object.keys(CALC_CONVERSIONS)[0])
-  var [inputVal, setInputVal] = useState('')
-  var [dimL, setDimL] = useState('')
-  var [dimW, setDimW] = useState('')
-  var [dimD, setDimD] = useState('')
-  var [dimUnit, setDimUnit] = useState('ft')
+  var [tab, setTab] = useState('length')
+  var [v1, setV1] = useState('')
+  var [v2, setV2] = useState('')
+  var [v3, setV3] = useState('')
 
-  var conv = CALC_CONVERSIONS[convKey]
-  var cr = inputVal ? Math.round(parseFloat(inputVal) * conv.f * 100) / 100 : ''
+  function r(n) { return n ? Math.round(n * 100) / 100 : '' }
+  function p(s) { return parseFloat(s) || 0 }
 
-  var l = parseFloat(dimL) || 0, w = parseFloat(dimW) || 0, d = parseFloat(dimD) || 0
-  var hasDims = l > 0 && w > 0 && d > 0
-  var cfRaw = dimUnit === 'in' ? (l * w * d) / 1728 : l * w * d
-  var cf = hasDims ? Math.round(cfRaw * 100) / 100 : ''
-  var cy = hasDims ? Math.round((cfRaw / 27) * 100) / 100 : ''
-  var tons = hasDims ? Math.round((cfRaw / 27 * 1.4) * 100) / 100 : ''
-  var sfRaw = l > 0 && w > 0 ? (dimUnit === 'in' ? (l * w) / 144 : l * w) : 0
-  var sf = sfRaw ? Math.round(sfRaw * 100) / 100 : ''
-  var sy = sfRaw ? Math.round(sfRaw / 9 * 100) / 100 : ''
+  var tabs = ['length', 'area', 'volume', 'tons']
+
+  function switchTab(t) { setTab(t); setV1(''); setV2(''); setV3('') }
+
+  var inputStyle = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white text-base focus:outline-none focus:border-orange-500'
+  var resultStyle = 'bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 space-y-2'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={props.onClose}>
       <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4" onClick={function(e) { e.stopPropagation() }}>
         <div className="flex items-center justify-between">
-          <h3 className="text-white font-bold text-lg">Unit Converter</h3>
+          <h3 className="text-white font-bold text-lg">Calculator</h3>
           <button onClick={props.onClose} className="text-slate-500 text-2xl leading-none active:text-slate-300">x</button>
         </div>
         <div className="flex gap-1">
-          <button onClick={function() { setMode('convert') }}
-            className={'flex-1 py-2 rounded-lg text-xs font-semibold ' + (mode === 'convert' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' : 'text-slate-500 border border-slate-700')}>
-            Convert
-          </button>
-          <button onClick={function() { setMode('dimensions') }}
-            className={'flex-1 py-2 rounded-lg text-xs font-semibold ' + (mode === 'dimensions' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' : 'text-slate-500 border border-slate-700')}>
-            L × W × D
-          </button>
+          {tabs.map(function(t) {
+            return (
+              <button key={t} onClick={function() { switchTab(t) }}
+                className={'flex-1 py-2 rounded-lg text-xs font-semibold capitalize ' + (tab === t ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' : 'text-slate-500 border border-slate-700')}>
+                {t}
+              </button>
+            )
+          })}
         </div>
-        {mode === 'convert' && (
+
+        {tab === 'length' && (
           <div className="space-y-3">
-            <select value={convKey} onChange={function(e) { setConvKey(e.target.value); setInputVal('') }}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
-              {Object.keys(CALC_CONVERSIONS).map(function(k) { return <option key={k} value={k}>{k}</option> })}
-            </select>
-            <div className="flex items-center gap-2">
-              <input type="number" value={inputVal} onChange={function(e) { setInputVal(e.target.value) }}
-                placeholder="Enter value"
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
-              <span className="text-slate-500 text-sm">=</span>
-              <div className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-orange-400 text-sm font-mono min-h-[46px]">
-                {cr} {cr !== '' ? conv.to : ''}
-              </div>
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Enter Length</p>
+              <input type="number" value={v1} onChange={function(e) { setV1(e.target.value) }} placeholder="0" className={inputStyle} />
             </div>
-          </div>
-        )}
-        {mode === 'dimensions' && (
-          <div className="space-y-3">
-            <select value={dimUnit} onChange={function(e) { setDimUnit(e.target.value) }}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
-              <option value="ft">Feet</option>
-              <option value="in">Inches</option>
-            </select>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <p className="text-slate-600 text-xs mb-1">Length</p>
-                <input type="number" value={dimL} onChange={function(e) { setDimL(e.target.value) }} placeholder="L"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
-              </div>
-              <span className="text-slate-600 mt-4">×</span>
-              <div className="flex-1">
-                <p className="text-slate-600 text-xs mb-1">Width</p>
-                <input type="number" value={dimW} onChange={function(e) { setDimW(e.target.value) }} placeholder="W"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
-              </div>
-              <span className="text-slate-600 mt-4">×</span>
-              <div className="flex-1">
-                <p className="text-slate-600 text-xs mb-1">Depth</p>
-                <input type="number" value={dimD} onChange={function(e) { setDimD(e.target.value) }} placeholder="D"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
-              </div>
-            </div>
-            {(sf || hasDims) && (
-              <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 space-y-1.5">
-                {sf && <div className="flex justify-between"><span className="text-slate-400 text-sm">Area</span><span className="text-orange-400 text-sm font-mono">{sf} SF / {sy} SY</span></div>}
-                {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-sm">Volume</span><span className="text-orange-400 text-sm font-mono">{cf} CF</span></div>}
-                {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-sm">Volume</span><span className="text-orange-400 text-sm font-mono">{cy} CY</span></div>}
-                {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-sm">Weight (est.)</span><span className="text-orange-400 text-sm font-mono">{tons} tons</span></div>}
+            {p(v1) > 0 && (
+              <div className={resultStyle}>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Feet</span><span className="text-orange-400 text-sm font-mono">{r(p(v1))} FT</span></div>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Inches</span><span className="text-orange-400 text-sm font-mono">{r(p(v1) * 12)} IN</span></div>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Yards</span><span className="text-orange-400 text-sm font-mono">{r(p(v1) / 3)} YD</span></div>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Linear Feet</span><span className="text-orange-400 text-sm font-mono">{r(p(v1))} LF</span></div>
               </div>
             )}
           </div>
         )}
+
+        {tab === 'area' && (
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Length (FT)</p>
+                <input type="number" value={v1} onChange={function(e) { setV1(e.target.value) }} placeholder="0" className={inputStyle} />
+              </div>
+              <div className="flex-1">
+                <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Width (FT)</p>
+                <input type="number" value={v2} onChange={function(e) { setV2(e.target.value) }} placeholder="0" className={inputStyle} />
+              </div>
+            </div>
+            {p(v1) > 0 && p(v2) > 0 && (
+              <div className={resultStyle}>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Square Feet</span><span className="text-orange-400 text-sm font-mono">{r(p(v1) * p(v2))} SF</span></div>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Square Yards</span><span className="text-orange-400 text-sm font-mono">{r(p(v1) * p(v2) / 9)} SY</span></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'volume' && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Length (FT)</p>
+                <input type="number" value={v1} onChange={function(e) { setV1(e.target.value) }} placeholder="0" className={inputStyle} />
+              </div>
+              <div className="flex-1">
+                <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Width (FT)</p>
+                <input type="number" value={v2} onChange={function(e) { setV2(e.target.value) }} placeholder="0" className={inputStyle} />
+              </div>
+              <div className="flex-1">
+                <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Depth (FT)</p>
+                <input type="number" value={v3} onChange={function(e) { setV3(e.target.value) }} placeholder="0" className={inputStyle} />
+              </div>
+            </div>
+            {p(v1) > 0 && p(v2) > 0 && p(v3) > 0 && (
+              <div className={resultStyle}>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Cubic Feet</span><span className="text-orange-400 text-sm font-mono">{r(p(v1) * p(v2) * p(v3))} CF</span></div>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Cubic Yards</span><span className="text-orange-400 text-sm font-mono">{r(p(v1) * p(v2) * p(v3) / 27)} CY</span></div>
+                <div className="flex justify-between"><span className="text-slate-400 text-sm">Est. Weight</span><span className="text-orange-400 text-sm font-mono">{r(p(v1) * p(v2) * p(v3) / 27 * 1.4)} tons</span></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'tons' && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Area (SY)</p>
+              <input type="number" value={v1} onChange={function(e) { setV1(e.target.value) }} placeholder="0" className={inputStyle} />
+            </div>
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Depth (inches)</p>
+              <input type="number" value={v2} onChange={function(e) { setV2(e.target.value) }} placeholder="0" className={inputStyle} />
+            </div>
+            {p(v1) > 0 && p(v2) > 0 && (
+              <div className={resultStyle}>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 text-sm">Estimated Tons</span>
+                  <span className="text-orange-400 text-base font-mono font-bold">{r(p(v1) * p(v2) * 0.0034)} tons</span>
+                </div>
+                <p className="text-slate-600 text-xs">Formula: SY × depth (in) × 0.0034</p>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )
