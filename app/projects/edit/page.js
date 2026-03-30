@@ -3,6 +3,23 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+function Field(fp) {
+  return (
+    <div>
+      <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">
+        {fp.label}{fp.required && <span className="text-orange-400 ml-1">*</span>}
+      </p>
+      <input
+        type={fp.type || 'text'}
+        value={fp.value}
+        onChange={function(e) { fp.onChange(e.target.value) }}
+        placeholder={fp.placeholder || ''}
+        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500"
+      />
+    </div>
+  )
+}
+
 export default function EditProjectWrapper() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
@@ -71,23 +88,6 @@ function EditProjectPage() {
     router.push('/projects')
   }
 
-  function Field(fp) {
-    return (
-      <div>
-        <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">
-          {fp.label}{fp.required && <span className="text-orange-400 ml-1">*</span>}
-        </p>
-        <input
-          type={fp.type || 'text'}
-          value={form[fp.field]}
-          onChange={function(e) { setField(fp.field, e.target.value) }}
-          placeholder={fp.placeholder || ''}
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500"
-        />
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="flex items-center justify-between px-4 pt-12 pb-4 bg-slate-900 border-b border-slate-700">
@@ -100,12 +100,12 @@ function EditProjectPage() {
       </div>
       <div className="p-4 space-y-4 pb-24">
         {error && <p className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-xl px-4 py-3">{error}</p>}
-        <Field field="project_name" label="Project Name" required={true} placeholder="e.g. Main Street Sewer Replacement" />
-        <Field field="project_number" label="Project Number" placeholder="e.g. 2024-001" />
-        <Field field="owner" label="Owner" placeholder="e.g. Capital Region Water" />
-        <Field field="contractor" label="Contractor" placeholder="e.g. Rogele Inc." />
-        <Field field="project_engineer" label="Project Engineer" placeholder="e.g. Caleb Krauter" />
-        <Field field="location" label="Location" placeholder="e.g. Harrisburg, PA" />
+        <Field value={form.project_name} onChange={function(v) { setField('project_name', v) }} label="Project Name" required={true} placeholder="e.g. Main Street Sewer Replacement" />
+        <Field value={form.project_number} onChange={function(v) { setField('project_number', v) }} label="Project Number" placeholder="e.g. 2024-001" />
+        <Field value={form.owner} onChange={function(v) { setField('owner', v) }} label="Owner" placeholder="e.g. Capital Region Water" />
+        <Field value={form.contractor} onChange={function(v) { setField('contractor', v) }} label="Contractor" placeholder="e.g. Rogele Inc." />
+        <Field value={form.project_engineer} onChange={function(v) { setField('project_engineer', v) }} label="Project Engineer" placeholder="e.g. Caleb Krauter" />
+        <Field value={form.location} onChange={function(v) { setField('location', v) }} label="Location" placeholder="e.g. Harrisburg, PA" />
         <button onClick={handleSave} disabled={saving || !form.project_name.trim()}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-40 transition-colors mt-4">
           {saving ? 'Saving...' : 'Save Project'}
