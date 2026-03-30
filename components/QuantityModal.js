@@ -408,7 +408,7 @@ function UnitConverter() {
           </div>
           {(sf || hasDims) && (
             <div className="bg-slate-700 rounded-lg px-3 py-2 space-y-1">
-              {sf && <div className="flex justify-between"><span className="text-slate-400 text-xs">Area</span><span className="text-orange-400 text-xs font-mono">{sf} SF</span></div>}
+              {sf && <div className="flex justify-between"><span className="text-slate-400 text-xs">Area</span><span className="text-orange-400 text-xs font-mono">{sf} SF / {Math.round(sf / 9 * 100) / 100} SY</span></div>}
               {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-xs">Volume</span><span className="text-orange-400 text-xs font-mono">{cf} CF</span></div>}
               {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-xs">Volume</span><span className="text-orange-400 text-xs font-mono">{cy} CY</span></div>}
               {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-xs">Weight (est.)</span><span className="text-orange-400 text-xs font-mono">{tons} tons</span></div>}
