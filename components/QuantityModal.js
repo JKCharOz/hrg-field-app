@@ -38,7 +38,7 @@ export function QuantityModal(props) {
   }
 
   async function handleSave() {
-    if (!description.trim() || !quantity.trim() || saving) return
+    if (!description.trim() || saving) return
     setSaving(true)
     var finalUnit = unit === 'Other' ? customUnit.trim() : unit
     var insertResult = await supabase.from('materials').insert({
@@ -46,9 +46,9 @@ export function QuantityModal(props) {
       project_id: report.project_id,
       org_id: report.org_id,
       material_type: description.trim(),
-      quantity: quantity.trim(),
+      quantity: parseFloat(quantity) || 0,
       unit: finalUnit,
-      location_ref: locationNotes.trim() || null,
+      location_ref: (isNaN(parseFloat(quantity)) && quantity.trim() ? quantity.trim() + (locationNotes.trim() ? ' — ' + locationNotes.trim() : '') : locationNotes.trim()) || null,
       is_delivery: false,
       logged_at: new Date().toISOString(),
     })
@@ -228,7 +228,7 @@ export function QuantityModal(props) {
           <div className="flex-1">
             <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Quantity</p>
             <input type="text" value={quantity} onChange={function(e) { setQuantity(e.target.value) }}
-              placeholder="0"
+              placeholder="e.g. 20, In Progress..."
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
           </div>
           <div>
@@ -253,7 +253,7 @@ export function QuantityModal(props) {
             placeholder="e.g. MH-104 to MH-105, Station 10+00..."
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500 resize-none" />
         </div>
-        <button onClick={handleSave} disabled={!description.trim() || !quantity.trim() || saving}
+        <button onClick={handleSave} disabled={!description.trim() || saving}
           className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600 disabled:opacity-40 transition-colors">
           {saving ? 'Saving...' : 'Add Quantity'}
         </button>
