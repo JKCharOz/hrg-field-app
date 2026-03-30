@@ -307,12 +307,31 @@ var CONVERSIONS = {
 
 function UnitConverter() {
   var [open, setOpen] = useState(false)
+  var [mode, setMode] = useState('convert')
   var [convKey, setConvKey] = useState(Object.keys(CONVERSIONS)[0])
   var [inputVal, setInputVal] = useState('')
+  var [dimL, setDimL] = useState('')
+  var [dimW, setDimW] = useState('')
+  var [dimD, setDimD] = useState('')
+  var [dimUnit, setDimUnit] = useState('ft')
 
   var conv = CONVERSIONS[convKey]
-  var result = inputVal ? (parseFloat(inputVal) * conv.factor) : ''
-  var display = result !== '' ? (Math.round(result * 100) / 100) : ''
+  var convertResult = inputVal ? (parseFloat(inputVal) * conv.factor) : ''
+  var convertDisplay = convertResult !== '' ? (Math.round(convertResult * 100) / 100) : ''
+
+  var l = parseFloat(dimL) || 0
+  var w = parseFloat(dimW) || 0
+  var d = parseFloat(dimD) || 0
+  var hasDims = l > 0 && w > 0 && d > 0
+  var cfRaw = dimUnit === 'in' ? (l * w * d) / 1728 : l * w * d
+  var cf = hasDims ? Math.round(cfRaw * 100) / 100 : ''
+  var cy = hasDims ? Math.round((cfRaw / 27) * 100) / 100 : ''
+  var tons = hasDims ? Math.round((cfRaw / 27 * 1.4) * 100) / 100 : ''
+  var sf = ''
+  if (parseFloat(dimL) > 0 && parseFloat(dimW) > 0) {
+    var sfRaw = dimUnit === 'in' ? (l * w) / 144 : l * w
+    sf = Math.round(sfRaw * 100) / 100
+  }
 
   if (!open) {
     return (
@@ -329,19 +348,74 @@ function UnitConverter() {
         <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Unit Converter</p>
         <button onClick={function() { setOpen(false) }} className="text-slate-600 text-xs active:text-slate-300">Close</button>
       </div>
-      <select value={convKey} onChange={function(e) { setConvKey(e.target.value); setInputVal('') }}
-        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500">
-        {Object.keys(CONVERSIONS).map(function(k) { return <option key={k} value={k}>{k}</option> })}
-      </select>
-      <div className="flex items-center gap-2">
-        <input type="number" value={inputVal} onChange={function(e) { setInputVal(e.target.value) }}
-          placeholder="Enter value"
-          className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
-        <span className="text-slate-500 text-sm">=</span>
-        <div className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-orange-400 text-sm font-mono min-h-[38px]">
-          {display} {display !== '' ? conv.to : ''}
-        </div>
+      <div className="flex gap-1">
+        <button onClick={function() { setMode('convert') }}
+          className={'flex-1 py-1.5 rounded-lg text-xs font-semibold ' + (mode === 'convert' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' : 'text-slate-500 border border-slate-700')}>
+          Convert
+        </button>
+        <button onClick={function() { setMode('dimensions') }}
+          className={'flex-1 py-1.5 rounded-lg text-xs font-semibold ' + (mode === 'dimensions' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' : 'text-slate-500 border border-slate-700')}>
+          L × W × D
+        </button>
       </div>
+      {mode === 'convert' && (
+        <div className="space-y-2">
+          <select value={convKey} onChange={function(e) { setConvKey(e.target.value); setInputVal('') }}
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500">
+            {Object.keys(CONVERSIONS).map(function(k) { return <option key={k} value={k}>{k}</option> })}
+          </select>
+          <div className="flex items-center gap-2">
+            <input type="number" value={inputVal} onChange={function(e) { setInputVal(e.target.value) }}
+              placeholder="Enter value"
+              className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500" />
+            <span className="text-slate-500 text-sm">=</span>
+            <div className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-orange-400 text-sm font-mono min-h-[38px]">
+              {convertDisplay} {convertDisplay !== '' ? conv.to : ''}
+            </div>
+          </div>
+        </div>
+      )}
+      {mode === 'dimensions' && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <select value={dimUnit} onChange={function(e) { setDimUnit(e.target.value) }}
+              className="bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-orange-500">
+              <option value="ft">Feet</option>
+              <option value="in">Inches</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="flex-1">
+              <p className="text-slate-600 text-xs mb-1">Length</p>
+              <input type="number" value={dimL} onChange={function(e) { setDimL(e.target.value) }}
+                placeholder="L"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
+            </div>
+            <span className="text-slate-600 text-sm mt-4">×</span>
+            <div className="flex-1">
+              <p className="text-slate-600 text-xs mb-1">Width</p>
+              <input type="number" value={dimW} onChange={function(e) { setDimW(e.target.value) }}
+                placeholder="W"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
+            </div>
+            <span className="text-slate-600 text-sm mt-4">×</span>
+            <div className="flex-1">
+              <p className="text-slate-600 text-xs mb-1">Depth</p>
+              <input type="number" value={dimD} onChange={function(e) { setDimD(e.target.value) }}
+                placeholder="D"
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-orange-500" />
+            </div>
+          </div>
+          {(sf || hasDims) && (
+            <div className="bg-slate-700 rounded-lg px-3 py-2 space-y-1">
+              {sf && <div className="flex justify-between"><span className="text-slate-400 text-xs">Area</span><span className="text-orange-400 text-xs font-mono">{sf} SF</span></div>}
+              {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-xs">Volume</span><span className="text-orange-400 text-xs font-mono">{cf} CF</span></div>}
+              {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-xs">Volume</span><span className="text-orange-400 text-xs font-mono">{cy} CY</span></div>}
+              {hasDims && <div className="flex justify-between"><span className="text-slate-400 text-xs">Weight (est.)</span><span className="text-orange-400 text-xs font-mono">{tons} tons</span></div>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
