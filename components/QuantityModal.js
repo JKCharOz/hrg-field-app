@@ -4,10 +4,12 @@ import { supabase } from '@/lib/supabase'
 
 export function QuantityModal(props) {
   var report = props.report
+  var project = props.project
   var onClose = props.onClose
   var onSaved = props.onSaved
 
   var [presets, setPresets] = useState([])
+  var [contractItems, setContractItems] = useState([])
   var [description, setDescription] = useState('')
   var [quantity, setQuantity] = useState('')
   var [unit, setUnit] = useState('LF')
@@ -26,11 +28,17 @@ export function QuantityModal(props) {
   useEffect(function() {
     if (report && report.org_id) { loadPresets() }
     if (report && report.id) { loadInstalled() }
+    if (report && report.project_id) { loadContractItems() }
   }, [report && report.id])
 
   async function loadPresets() {
     var result = await supabase.from('material_presets').select('*').eq('org_id', report.org_id).order('sort_order', { ascending: true })
     if (!result.error && result.data) { setPresets(result.data) }
+  }
+
+  async function loadContractItems() {
+    var result = await supabase.from('contract_items').select('*').eq('project_id', report.project_id).order('sort_order', { ascending: true })
+    if (!result.error && result.data) { setContractItems(result.data) }
   }
 
   async function loadInstalled() {
@@ -235,6 +243,30 @@ export function QuantityModal(props) {
           <h3 className="text-white font-bold text-lg">Quantity Installed</h3>
           <button onClick={onClose} className="text-slate-500 text-2xl leading-none active:text-slate-300">x</button>
         </div>
+        {contractItems.length > 0 && (
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Bid Items</p>
+            <select
+              value=""
+              onChange={function(e) {
+                var ci = contractItems.find(function(c) { return c.id === e.target.value })
+                if (ci) {
+                  setItemNumber(ci.item_number || '')
+                  setDescription(ci.description || '')
+                  if (ci.unit) {
+                    var matched = UNITS.find(function(u) { return u.toLowerCase() === ci.unit.toLowerCase() })
+                    if (matched) { setUnit(matched) } else { setUnit('Other'); setCustomUnit(ci.unit) }
+                  }
+                }
+              }}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
+              <option value="">Select a bid item...</option>
+              {contractItems.map(function(ci) {
+                return <option key={ci.id} value={ci.id}>{ci.item_number ? ci.item_number + ' — ' : ''}{ci.description}{ci.unit ? ' (' + ci.unit + ')' : ''}</option>
+              })}
+            </select>
+          </div>
+        )}
         {presets.length > 0 && (
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Quick Select</p>
