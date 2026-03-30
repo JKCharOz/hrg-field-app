@@ -289,7 +289,7 @@ export function ReportTemplate(props) {
         </table>
       </div>
 
-      <LabelBlock label="Sub-Contractors:" value="" />
+      <LabelBlock label="Sub-Contractors:" value={report.subcontractors || ''} />
       <LabelBlock label="Visitors:" value={report.visitors || ''} />
       <LabelBlock label="Items Discussed & People Contacted:" value={report.items_discussed || ''} />
 
@@ -339,9 +339,9 @@ export function ReportTemplate(props) {
       </div>
 
       <LabelBlock label="Materials Delivered:" value={delivered.map(function(m) { return m.material_type + ' -- ' + m.quantity + ' ' + m.unit }).join(', ')} />
-      <LabelBlock label="Testing:" value="" />
-      <LabelBlock label="RFI:" value="" />
-      <LabelBlock label="Nonconforming Work:" value="" />
+      <LabelBlock label="Testing:" value={report.testing_notes || ''} />
+      <LabelBlock label="RFI:" value={report.rfi_notes || ''} />
+      <LabelBlock label="Nonconforming Work:" value={report.nonconforming_work || ''} />
       <LabelBlock label="Remarks:" value={report.remarks || ''} />
 
       {photos.length > 0 && (
