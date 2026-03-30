@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { ProjectDocsModal } from '@/components/ProjectDocsModal'
 
 
 function InProgressSection(props) {
@@ -45,6 +46,7 @@ export default function ProjectsPage() {
   var [pageError, setPageError] = useState(null)
   var [creating, setCreating] = useState({})
   var [reports, setReports] = useState([])
+  var [docsProject, setDocsProject] = useState(null)
 
   useEffect(function() { loadData() }, [])
 
@@ -207,6 +209,8 @@ export default function ProjectsPage() {
                   {project.project_number && <p className="text-orange-400 text-xs font-mono">{project.project_number}</p>}
                 </div>
                 <div className="flex items-center gap-2">
+                  <button onClick={function() { setDocsProject(project) }}
+                    className="text-slate-400 text-xs px-2 py-1 border border-slate-700 rounded-lg active:bg-slate-700">Files</button>
                   <button onClick={function() { router.push('/projects/totals?id=' + project.id) }}
                     className="text-orange-400 text-xs px-2 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10">Totals</button>
                   <button onClick={function() { router.push('/projects/edit?id=' + project.id) }}
@@ -245,6 +249,7 @@ export default function ProjectsPage() {
           )
         })}
       </div>
+      {docsProject && <ProjectDocsModal project={docsProject} onClose={function() { setDocsProject(null) }} />}
     </div>
   )
 }

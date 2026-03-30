@@ -12,7 +12,6 @@ import { MaterialsModal } from '@/components/MaterialsModal'
 import { QuantityModal } from '@/components/QuantityModal'
 import { EquipmentModal } from '@/components/EquipmentModal'
 import { CrewModal } from '@/components/CrewModal'
-import { ProjectDocsModal } from '@/components/ProjectDocsModal'
 
 function Divider() { return <div style={{ margin: '0 1rem', borderTop: '1px solid rgb(30 41 59)' }} /> }
 function SectionLabel(p) { return <p className="px-4 text-slate-500 text-xs uppercase tracking-widest">{p.text}</p> }
@@ -365,13 +364,7 @@ function DailyLogPage() {
                 className="w-14 bg-slate-700 border border-slate-600 rounded-lg px-2 py-1 text-white text-xs font-mono text-center focus:outline-none focus:border-orange-500" />
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            {project && project.location && <p className="text-slate-500 text-xs flex-1">{project.location}</p>}
-            <button onClick={function() { setModal('projectdocs') }}
-              className="text-orange-400 text-xs px-2.5 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10 flex-shrink-0">
-              Files
-            </button>
-          </div>
+          {project && project.location && <p className="text-slate-500 text-xs mt-1.5">{project.location}</p>}
         </div>
 
         <DailyConditions report={report} onUpdate={handleReportUpdate} />
@@ -566,8 +559,7 @@ function DailyLogPage() {
       {modal === 'quantity' && <QuantityModal report={report} project={project} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'discussed' && <DiscussedModal report={report} onSave={handleReportUpdate} onClose={function() { setModal(null) }} />}
       {modal === 'calculator' && <CalculatorModal onClose={function() { setModal(null) }} />}
-      {modal === 'projectdocs' && <ProjectDocsModal project={project} onClose={function() { setModal(null) }} />}
-      {modal && modal !== 'discussed' && modal !== 'remarks' && modal !== 'photo' && modal !== 'materials' && modal !== 'quantity' && modal !== 'equipment' && modal !== 'visitors' && modal !== 'crew' && modal !== 'subcontractors' && modal !== 'testing' && modal !== 'rfi' && modal !== 'nonconforming' && modal !== 'calculator' && modal !== 'projectdocs' && <PlaceholderModal title={MODAL_LABELS[modal] || modal} onClose={function() { setModal(null) }} />}
+      {modal && modal !== 'discussed' && modal !== 'remarks' && modal !== 'photo' && modal !== 'materials' && modal !== 'quantity' && modal !== 'equipment' && modal !== 'visitors' && modal !== 'crew' && modal !== 'subcontractors' && modal !== 'testing' && modal !== 'rfi' && modal !== 'nonconforming' && modal !== 'calculator' && <PlaceholderModal title={MODAL_LABELS[modal] || modal} onClose={function() { setModal(null) }} />}
 
       {toast && (
         <div className="fixed top-20 inset-x-0 flex justify-center z-50 px-4" style={{ pointerEvents: 'none' }}>
