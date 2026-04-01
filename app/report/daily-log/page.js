@@ -449,8 +449,12 @@ function DailyLogPage() {
           <div className="flex items-center justify-between px-4">
             <SectionLabel text="Work Observed" />
             <button onClick={function() { setSmartLog(function(v) { return !v }) }}
-              className={'text-xs px-2.5 py-1 rounded-lg border transition-colors ' + (smartLog ? 'border-orange-500/40 bg-orange-500/10 text-orange-400' : 'border-slate-700 text-slate-500')}>
-              {smartLog ? 'Smart' : 'Manual'}
+              className="flex items-center gap-1.5 text-xs active:opacity-70">
+              <span className={smartLog ? 'text-slate-500' : 'text-orange-400 font-semibold'}>Manual</span>
+              <div className={'w-9 h-5 rounded-full p-0.5 transition-colors ' + (smartLog ? 'bg-orange-500' : 'bg-slate-600')}>
+                <div className={'w-4 h-4 rounded-full bg-white transition-transform ' + (smartLog ? 'translate-x-4' : 'translate-x-0')} />
+              </div>
+              <span className={smartLog ? 'text-orange-400 font-semibold' : 'text-slate-500'}>Smart</span>
             </button>
           </div>
           <div className="flex gap-2 px-4 mt-3">
