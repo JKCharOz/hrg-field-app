@@ -225,6 +225,7 @@ function DailyLogPage() {
   var [toast, setToast] = useState(null)
   var [logText, setLogText] = useState('')
   var [addingLog, setAddingLog] = useState(false)
+  var [smartLog, setSmartLog] = useState(true)
 
   useEffect(function() {
     var reportId = params.get('report')
@@ -263,22 +264,24 @@ function DailyLogPage() {
     var contractor = (project && project.general_contractor) || ''
     var formatted = raw
     var aiError = null
-    for (var attempt = 0; attempt < 2; attempt++) {
-      try {
-        var res = await fetch('/api/format-activity', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ note: raw, contractor: contractor }),
-        })
-        var json = await res.json()
-        if (res.ok && json.text) {
-          formatted = json.text
-          aiError = null
-          break
-        } else {
-          aiError = json.error || 'status ' + res.status
-        }
-      } catch (e) { aiError = e.message || 'fetch failed' }
+    if (smartLog) {
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          var res = await fetch('/api/format-activity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ note: raw, contractor: contractor }),
+          })
+          var json = await res.json()
+          if (res.ok && json.text) {
+            formatted = json.text
+            aiError = null
+            break
+          } else {
+            aiError = json.error || 'status ' + res.status
+          }
+        } catch (e) { aiError = e.message || 'fetch failed' }
+      }
     }
     var result = await supabase.from('activity_logs').insert({
       report_id: report.id,
@@ -443,12 +446,18 @@ function DailyLogPage() {
         <Divider />
 
         <div>
-          <SectionLabel text="Work Observed" />
+          <div className="flex items-center justify-between px-4">
+            <SectionLabel text="Work Observed" />
+            <button onClick={function() { setSmartLog(function(v) { return !v }) }}
+              className={'text-xs px-2.5 py-1 rounded-lg border transition-colors ' + (smartLog ? 'border-orange-500/40 bg-orange-500/10 text-orange-400' : 'border-slate-700 text-slate-500')}>
+              {smartLog ? 'Smart' : 'Manual'}
+            </button>
+          </div>
           <div className="flex gap-2 px-4 mt-3">
             <input type="text" value={logText}
               onChange={function(e) { setLogText(e.target.value) }}
               onKeyDown={function(e) { if (e.key === 'Enter') handleAddLog() }}
-              placeholder="Describe an observed activity..."
+              placeholder={smartLog ? 'Shorthand note...' : 'Type entry as-is...'}
               className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
             <button onClick={handleAddLog} disabled={!logText.trim() || addingLog}
               className="bg-orange-500 text-white font-bold px-4 rounded-xl active:bg-orange-600 disabled:opacity-40 transition-colors flex-shrink-0">
