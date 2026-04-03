@@ -255,7 +255,7 @@ export function QuantityModal(props) {
         </div>
         {contractItems.length > 0 && (
           <div style={{ position: 'relative' }}>
-            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Bid Items</p>
+            <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Contract Items</p>
             <input
               type="text"
               value={bidSearch}
