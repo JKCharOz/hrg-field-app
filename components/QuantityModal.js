@@ -16,6 +16,9 @@ export function QuantityModal(props) {
   var [customUnit, setCustomUnit] = useState('')
   var [locationNotes, setLocationNotes] = useState('')
   var [itemNumber, setItemNumber] = useState('')
+  var [contractItemId, setContractItemId] = useState(null)
+  var [bidSearch, setBidSearch] = useState('')
+  var [bidDropdownOpen, setBidDropdownOpen] = useState(false)
   var [saving, setSaving] = useState(false)
   var [editMode, setEditMode] = useState(false)
   var [editingEntry, setEditingEntry] = useState(null)
@@ -69,7 +72,7 @@ export function QuantityModal(props) {
     if (!description.trim() || saving) return
     setSaving(true)
     var finalUnit = unit === 'Other' ? customUnit.trim() : unit
-    var insertResult = await supabase.from('materials').insert({
+    var insertPayload = {
       report_id: report.id,
       project_id: report.project_id,
       org_id: report.org_id,
@@ -79,7 +82,9 @@ export function QuantityModal(props) {
       location_ref: buildLocationRef(itemNumber, quantity, locationNotes),
       is_delivery: false,
       logged_at: new Date().toISOString(),
-    })
+    }
+    if (contractItemId) { insertPayload.contract_item_id = contractItemId }
+    var insertResult = await supabase.from('materials').insert(insertPayload)
     setSaving(false)
     if (insertResult.error) { alert('Save failed: ' + insertResult.error.message); return }
     setDescription('')
@@ -88,17 +93,21 @@ export function QuantityModal(props) {
     setCustomUnit('')
     setLocationNotes('')
     setItemNumber('')
+    setContractItemId(null)
+    setBidSearch('')
     loadInstalled()
     if (onSaved) { onSaved() }
   }
 
-  async function saveEditInstalled(id, desc, qty, u, loc) {
-    var result = await supabase.from('materials').update({
+  async function saveEditInstalled(id, desc, qty, u, loc, ciId) {
+    var updatePayload = {
       material_type: desc.trim(),
       quantity: String(parseFloat(qty) || 0),
       unit: u,
       location_ref: loc || null,
-    }).eq('id', id).select().single()
+    }
+    if (ciId) { updatePayload.contract_item_id = ciId }
+    var result = await supabase.from('materials').update(updatePayload).eq('id', id).select().single()
     if (!result.error && result.data) {
       setInstalled(function(prev) { return prev.map(function(m) { return m.id === id ? result.data : m }) })
     }
@@ -193,7 +202,8 @@ export function QuantityModal(props) {
               document.getElementById('edit-qi-desc').value,
               eQty,
               document.getElementById('edit-qi-unit').value,
-              buildLocationRef(eItem, eQty, eLoc)
+              buildLocationRef(eItem, eQty, eLoc),
+              editingEntry.contract_item_id || null
             )
           }} className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600">Save</button>
           <button onClick={function() { setEditingEntry(null) }} className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm">Cancel</button>
@@ -238,33 +248,54 @@ export function QuantityModal(props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
-      <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4 max-h-screen overflow-y-auto" onClick={function(e) { e.stopPropagation() }}>
+      <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4 max-h-screen overflow-y-auto" onClick={function(e) { e.stopPropagation(); setBidDropdownOpen(false) }}>
         <div className="flex items-center justify-between">
           <h3 className="text-white font-bold text-lg">Quantity Installed</h3>
           <button onClick={onClose} className="text-slate-500 text-2xl leading-none active:text-slate-300">x</button>
         </div>
         {contractItems.length > 0 && (
-          <div>
+          <div style={{ position: 'relative' }}>
             <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Bid Items</p>
-            <select
-              value=""
-              onChange={function(e) {
-                var ci = contractItems.find(function(c) { return c.id === e.target.value })
-                if (ci) {
-                  setItemNumber(ci.item_number || '')
-                  setDescription(ci.description || '')
-                  if (ci.unit) {
-                    var matched = UNITS.find(function(u) { return u.toLowerCase() === ci.unit.toLowerCase() })
-                    if (matched) { setUnit(matched) } else { setUnit('Other'); setCustomUnit(ci.unit) }
-                  }
-                }
-              }}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500">
-              <option value="">Select a bid item...</option>
-              {contractItems.map(function(ci) {
-                return <option key={ci.id} value={ci.id}>{ci.item_number ? ci.item_number + ' — ' : ''}{ci.description}{ci.unit ? ' (' + ci.unit + ')' : ''}</option>
-              })}
-            </select>
+            <input
+              type="text"
+              value={bidSearch}
+              onChange={function(e) { setBidSearch(e.target.value); setBidDropdownOpen(true) }}
+              onFocus={function() { setBidDropdownOpen(true) }}
+              placeholder="Search bid items..."
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 placeholder-slate-600" />
+            {bidDropdownOpen && (function() {
+              var term = bidSearch.toLowerCase().trim()
+              var filtered = term ? contractItems.filter(function(ci) {
+                return (ci.item_number || '').toLowerCase().indexOf(term) >= 0 || (ci.description || '').toLowerCase().indexOf(term) >= 0
+              }) : contractItems
+              var display = filtered.slice(0, 50)
+              return (
+                <div className="absolute left-0 right-0 z-10 mt-1 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden" style={{ maxHeight: '264px', overflowY: 'auto' }}>
+                  {display.length === 0 && <p className="text-slate-500 text-sm px-4 py-3">No matching items</p>}
+                  {display.map(function(ci) {
+                    return (
+                      <button key={ci.id} type="button" onClick={function() {
+                        setItemNumber(ci.item_number || '')
+                        setDescription(ci.description || '')
+                        setContractItemId(ci.id)
+                        setBidSearch((ci.item_number ? ci.item_number + ' — ' : '') + (ci.description || ''))
+                        setBidDropdownOpen(false)
+                        if (ci.unit) {
+                          var matched = UNITS.find(function(u) { return u.toLowerCase() === ci.unit.toLowerCase() })
+                          if (matched) { setUnit(matched) } else { setUnit('Other'); setCustomUnit(ci.unit) }
+                        }
+                      }}
+                        className="w-full text-left px-4 py-3 text-sm active:bg-slate-700 hover:bg-slate-700/50 border-b border-slate-700/50 last:border-b-0"
+                        style={{ minHeight: '44px' }}>
+                        <span className="text-orange-400 font-mono text-xs mr-2">{ci.item_number}</span>
+                        <span className="text-slate-200">{ci.description}</span>
+                        {ci.unit ? <span className="text-slate-500 text-xs ml-1">({ci.unit})</span> : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
         {presets.length > 0 && (
