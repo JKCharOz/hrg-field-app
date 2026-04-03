@@ -71,7 +71,7 @@ function SettingsPage() {
             <p className={'text-sm px-3 py-2 rounded-lg ' + (message.type === 'error' ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20')}>{message.text}</p>
           )}
           <input type="email" value={email} onChange={function(e) { setEmail(e.target.value) }}
-            placeholder="colleague@hrg.com"
+            placeholder="colleague@company.com"
             className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
           <button onClick={handleInvite} disabled={!email.trim() || sending}
             className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600 disabled:opacity-40 transition-colors">

@@ -184,7 +184,7 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="bg-slate-900 border-b border-slate-700 px-4 pt-12 pb-4">
-        <p className="text-orange-400 text-xs font-semibold uppercase tracking-widest mb-0.5">HRG Field Log</p>
+        <p className="text-orange-400 text-xs font-semibold uppercase tracking-widest mb-0.5">SiteDoc</p>
         <div className="flex items-center justify-between">
           <h1 className="text-white font-bold text-xl">Projects</h1>
           <div className="flex items-center gap-2">

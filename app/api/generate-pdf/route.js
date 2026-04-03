@@ -24,8 +24,8 @@ async function replaceImagesWithBase64(html, supabaseAdmin) {
     var b64 = null
 
     try {
-      if (m.url === '/hrg-logo.png' || m.url.includes('hrg-logo.png')) {
-        var logoPath = path.join(process.cwd(), 'public', 'hrg-logo.png')
+      if (m.url === '/logo.png' || m.url.includes('logo.png')) {
+        var logoPath = path.join(process.cwd(), 'public', 'logo.png')
         var logoBuf = fs.readFileSync(logoPath)
         b64 = 'data:image/png;base64,' + logoBuf.toString('base64')
       } else if (m.url.includes('/storage/v1/object/public/field-photos/')) {

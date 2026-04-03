@@ -180,7 +180,7 @@ export function ReportTemplate(props) {
     <div id="report-template" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#000', backgroundColor: '#fff', maxWidth: '780px', margin: '0 auto', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #000', paddingBottom: '6px', marginBottom: '8px' }}>
-        <img src="/hrg-logo.png" style={{ height: '40px', objectFit: 'contain' }} />
+        <img src="/logo.png" style={{ height: '40px', objectFit: 'contain' }} />
         <p style={{ fontWeight: 'bold', fontSize: '13px', margin: 0 }}>DAILY OBSERVATION REPORT</p>
       </div>
 
@@ -195,7 +195,7 @@ export function ReportTemplate(props) {
           <tr>
             <td style={{ ...cellPad, fontWeight: 'bold' }}>Owner:</td>
             <td style={{ ...cellPad, borderRight: border }}>{project.owner || ''}</td>
-            <td style={{ ...cellPad, fontWeight: 'bold' }}>HRG Project No:</td>
+            <td style={{ ...cellPad, fontWeight: 'bold' }}>Project No:</td>
             <td style={cellPad}>{project.project_number || ''}</td>
           </tr>
           <tr>

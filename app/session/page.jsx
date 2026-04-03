@@ -147,7 +147,7 @@ export default function SessionStartPage() {
         <button onClick={() => window.location.href = '/projects'} style={styles.backBtn}>
           ← Projects
         </button>
-        <img src="/hrg-logo.png" alt="HRG" style={styles.logo} />
+        <img src="/logo.png" alt="SiteDoc" style={styles.logo} />
       </div>
 
       <div style={styles.projectBanner}>

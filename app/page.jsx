@@ -23,8 +23,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0f2744] flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <h1 className="text-white text-3xl font-bold mb-2">HRG Field App</h1>
-        <p className="text-blue-300 text-sm mb-10">Daily Observation Reports</p>
+        <h1 className="text-white text-3xl font-bold mb-2">SiteDoc</h1>
+        <p className="text-blue-300 text-sm mb-10">Field Reporting & Project Tracking</p>
 
         <div className="flex flex-col gap-4">
           <input
