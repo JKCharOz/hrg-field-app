@@ -48,7 +48,12 @@ export default function ProjectsPage() {
   var [reports, setReports] = useState([])
   var [docsProject, setDocsProject] = useState(null)
 
-  useEffect(function() { loadData() }, [])
+  useEffect(function() {
+    loadData()
+    function onFocus() { loadData() }
+    window.addEventListener('focus', onFocus)
+    return function() { window.removeEventListener('focus', onFocus) }
+  }, [])
 
   async function loadData() {
     var authResult = await supabase.auth.getUser()
