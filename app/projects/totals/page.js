@@ -17,12 +17,15 @@ function TotalsPage() {
   var router = useRouter()
   var [project, setProject] = useState(null)
   var [loading, setLoading] = useState(true)
+  var [contractItems, setContractItems] = useState([])
+  var [installedByItem, setInstalledByItem] = useState({})
   var [quantities, setQuantities] = useState([])
   var [materials, setMaterials] = useState([])
   var [equipment, setEquipment] = useState([])
   var [crew, setCrew] = useState([])
   var [photos, setPhotos] = useState([])
   var [fullPhoto, setFullPhoto] = useState(null)
+  var [activeTab, setActiveTab] = useState('contract')
 
   var projectId = params.get('id')
 
@@ -35,23 +38,44 @@ function TotalsPage() {
     var projResult = await supabase.from('projects').select('*').eq('id', projectId).single()
     if (projResult.data) setProject(projResult.data)
 
-    var reportResult = await supabase.from('daily_reports').select('id').eq('project_id', projectId)
-    var reportIds = (reportResult.data || []).map(function(r) { return r.id })
-
-    if (reportIds.length === 0) { setLoading(false); return }
-
     var all = await Promise.all([
-      supabase.from('materials').select('*').in('report_id', reportIds).eq('is_delivery', false),
-      supabase.from('materials').select('*').in('report_id', reportIds).eq('is_delivery', true),
-      supabase.from('equipment_logs').select('*').in('report_id', reportIds),
-      supabase.from('crew_logs').select('*').in('report_id', reportIds),
+      supabase.from('daily_reports').select('id').eq('project_id', projectId),
+      supabase.from('contract_items').select('*').eq('project_id', projectId).order('sort_order', { ascending: true }),
+      supabase.from('materials').select('*').eq('project_id', projectId).eq('is_delivery', false),
+      supabase.from('materials').select('*').eq('project_id', projectId).eq('is_delivery', true),
       supabase.from('field_photos').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
+      supabase.from('stored_materials').select('*').eq('project_id', projectId),
     ])
 
-    setQuantities(aggregateByDescUnit(all[0].data || []))
-    setMaterials(aggregateByDescUnit(all[1].data || []))
-    setEquipment(aggregateEquipment(all[2].data || []))
-    setCrew(aggregateCrew(all[3].data || []))
+    var reportIds = (all[0].data || []).map(function(r) { return r.id })
+    var ciData = all[1].data || []
+    var installedData = all[2].data || []
+    var deliveredData = all[3].data || []
+
+    setContractItems(ciData)
+
+    // Build installed-to-date map by contract_item_id
+    var byItem = {}
+    installedData.forEach(function(m) {
+      if (m.contract_item_id) {
+        if (!byItem[m.contract_item_id]) byItem[m.contract_item_id] = 0
+        byItem[m.contract_item_id] += parseFloat(m.quantity) || 0
+      }
+    })
+    setInstalledByItem(byItem)
+
+    setQuantities(aggregateByDescUnit(installedData))
+    setMaterials(aggregateByDescUnit(deliveredData))
+
+    if (reportIds.length > 0) {
+      var more = await Promise.all([
+        supabase.from('equipment_logs').select('*').in('report_id', reportIds),
+        supabase.from('crew_logs').select('*').in('report_id', reportIds),
+      ])
+      setEquipment(aggregateEquipment(more[0].data || []))
+      setCrew(aggregateCrew(more[1].data || []))
+    }
+
     setPhotos(all[4].data || [])
     setLoading(false)
   }
@@ -131,78 +155,100 @@ function TotalsPage() {
         </div>
       </div>
 
+      <div className="flex border-b border-slate-700 px-4 pt-2">
+        {['contract', 'totals', 'photos'].map(function(t) {
+          var labels = { contract: 'Contract', totals: 'Totals', photos: 'Photos' }
+          return (
+            <button key={t} onClick={function() { setActiveTab(t) }}
+              className={'flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider text-center ' + (activeTab === t ? 'text-orange-400 border-b-2 border-orange-400' : 'text-slate-500')}>
+              {labels[t]}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="px-4 py-4 space-y-6">
 
-        <Section title="Quantity Installed">
-          {quantities.length === 0 && <Empty />}
-          {quantities.map(function(q, i) {
-            return (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-200 text-sm">{q.description}</span>
-                <span className="text-orange-400 text-sm font-mono">{formatNum(q.total)} {q.unit}</span>
-              </div>
-            )
-          })}
-        </Section>
+        {activeTab === 'contract' && (
+          <ContractProgress contractItems={contractItems} installedByItem={installedByItem} />
+        )}
 
-        <Section title="Materials Delivered">
-          {materials.length === 0 && <Empty />}
-          {materials.map(function(m, i) {
-            return (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-200 text-sm">{m.description}</span>
-                <span className="text-orange-400 text-sm font-mono">{formatNum(m.total)} {m.unit}</span>
-              </div>
-            )
-          })}
-        </Section>
+        {activeTab === 'totals' && (
+          <div className="space-y-6">
+            <Section title="Quantity Installed">
+              {quantities.length === 0 && <Empty />}
+              {quantities.map(function(q, i) {
+                return (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
+                    <span className="text-slate-200 text-sm">{q.description}</span>
+                    <span className="text-orange-400 text-sm font-mono">{formatNum(q.total)} {q.unit}</span>
+                  </div>
+                )
+              })}
+            </Section>
 
-        <Section title="Equipment">
-          {equipment.length === 0 && <Empty />}
-          {equipment.map(function(e, i) {
-            return (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
-                <div className="min-w-0">
-                  <span className="text-slate-200 text-sm">{e.type}{e.description && e.description !== e.type ? ' - ' + e.description : ''}</span>
+            <Section title="Materials Delivered">
+              {materials.length === 0 && <Empty />}
+              {materials.map(function(m, i) {
+                return (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
+                    <span className="text-slate-200 text-sm">{m.description}</span>
+                    <span className="text-orange-400 text-sm font-mono">{formatNum(m.total)} {m.unit}</span>
+                  </div>
+                )
+              })}
+            </Section>
+
+            <Section title="Equipment">
+              {equipment.length === 0 && <Empty />}
+              {equipment.map(function(e, i) {
+                return (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
+                    <div className="min-w-0">
+                      <span className="text-slate-200 text-sm">{e.type}{e.description && e.description !== e.type ? ' - ' + e.description : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-slate-400 text-xs">{e.count}x</span>
+                      {e.totalHours > 0 && <span className="text-orange-400 text-xs font-mono">{formatNum(e.totalHours)} hrs</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </Section>
+
+            <Section title="Crew">
+              {crew.length === 0 && <Empty />}
+              {crew.map(function(c, i) {
+                return (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
+                    <span className="text-slate-200 text-sm">{c.role}</span>
+                    <span className="text-orange-400 text-sm font-mono">{c.total}</span>
+                  </div>
+                )
+              })}
+            </Section>
+          </div>
+        )}
+
+        {activeTab === 'photos' && (
+          <div>
+            {photos.length === 0 && <Empty />}
+            {months.map(function(monthKey) {
+              var monthLabel = new Date(monthKey + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+              var dates = Object.keys(photoGroups[monthKey]).sort().reverse()
+              return (
+                <div key={monthKey} className="mb-4">
+                  <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">{monthLabel}</p>
+                  {dates.map(function(dateKey) {
+                    var dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                    var dayPhotos = photoGroups[monthKey][dateKey]
+                    return <DatePhotoGroup key={dateKey} label={dateLabel} photos={dayPhotos} onTap={setFullPhoto} />
+                  })}
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-slate-400 text-xs">{e.count}x</span>
-                  {e.totalHours > 0 && <span className="text-orange-400 text-xs font-mono">{formatNum(e.totalHours)} hrs</span>}
-                </div>
-              </div>
-            )
-          })}
-        </Section>
-
-        <Section title="Crew">
-          {crew.length === 0 && <Empty />}
-          {crew.map(function(c, i) {
-            return (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-200 text-sm">{c.role}</span>
-                <span className="text-orange-400 text-sm font-mono">{c.total}</span>
-              </div>
-            )
-          })}
-        </Section>
-
-        <Section title="Photos">
-          {photos.length === 0 && <Empty />}
-          {months.map(function(monthKey) {
-            var monthLabel = new Date(monthKey + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-            var dates = Object.keys(photoGroups[monthKey]).sort().reverse()
-            return (
-              <div key={monthKey} className="mb-4">
-                <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">{monthLabel}</p>
-                {dates.map(function(dateKey) {
-                  var dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                  var dayPhotos = photoGroups[monthKey][dateKey]
-                  return <DatePhotoGroup key={dateKey} label={dateLabel} photos={dayPhotos} onTap={setFullPhoto} />
-                })}
-              </div>
-            )
-          })}
-        </Section>
+              )
+            })}
+          </div>
+        )}
 
       </div>
 
@@ -215,6 +261,106 @@ function TotalsPage() {
       )}
     </div>
   )
+}
+
+function ContractProgress(props) {
+  var items = props.contractItems || []
+  var installed = props.installedByItem || {}
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-slate-500 text-sm">No contract items uploaded</p>
+        <p className="text-slate-600 text-xs mt-1">Upload a bid schedule in Project Files</p>
+      </div>
+    )
+  }
+
+  // Group by change_order
+  var groups = {}
+  var groupOrder = []
+  items.forEach(function(ci) {
+    var key = ci.change_order || '__original__'
+    if (!groups[key]) { groups[key] = []; groupOrder.push(key) }
+    groups[key].push(ci)
+  })
+
+  // Calculate totals
+  var originalValue = 0
+  var originalEarned = 0
+  var revisedValue = 0
+  var revisedEarned = 0
+
+  items.forEach(function(ci) {
+    var contractValue = (parseFloat(ci.contract_quantity) || 0) * (parseFloat(ci.unit_price) || 0)
+    var installedQty = installed[ci.id] || 0
+    var earnedValue = installedQty * (parseFloat(ci.unit_price) || 0)
+    revisedValue += contractValue
+    revisedEarned += earnedValue
+    if (!ci.change_order) {
+      originalValue += contractValue
+      originalEarned += earnedValue
+    }
+  })
+
+  var coValue = revisedValue - originalValue
+  var overallPct = revisedValue > 0 ? Math.round(revisedEarned / revisedValue * 1000) / 10 : 0
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 space-y-2">
+        <div className="flex justify-between"><span className="text-slate-400 text-xs">Original Contract</span><span className="text-slate-200 text-xs font-mono">${formatMoney(originalValue)}</span></div>
+        {coValue > 0 && <div className="flex justify-between"><span className="text-slate-400 text-xs">Change Orders</span><span className="text-slate-200 text-xs font-mono">${formatMoney(coValue)}</span></div>}
+        <div className="flex justify-between border-t border-slate-700 pt-2"><span className="text-white text-sm font-semibold">Revised Contract</span><span className="text-white text-sm font-mono font-semibold">${formatMoney(revisedValue)}</span></div>
+        <div className="flex justify-between"><span className="text-orange-400 text-sm">Earned to Date</span><span className="text-orange-400 text-sm font-mono font-semibold">${formatMoney(revisedEarned)}</span></div>
+        <div className="w-full bg-slate-700 rounded-full h-2 mt-1">
+          <div className="bg-orange-500 h-2 rounded-full" style={{ width: Math.min(overallPct, 100) + '%' }} />
+        </div>
+        <p className="text-slate-500 text-xs text-right">{overallPct}% complete</p>
+      </div>
+
+      {groupOrder.map(function(key) {
+        var label = key === '__original__' ? 'Original Contract' : key
+        var groupItems = groups[key]
+        return (
+          <div key={key}>
+            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">{label}</p>
+            <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-12 gap-0 px-3 py-2 border-b border-slate-700 bg-slate-800">
+                <span className="col-span-1 text-slate-500 text-xs font-semibold">#</span>
+                <span className="col-span-5 text-slate-500 text-xs font-semibold">Description</span>
+                <span className="col-span-2 text-slate-500 text-xs font-semibold text-right">Contract</span>
+                <span className="col-span-2 text-slate-500 text-xs font-semibold text-right">Installed</span>
+                <span className="col-span-2 text-slate-500 text-xs font-semibold text-right">%</span>
+              </div>
+              {groupItems.map(function(ci) {
+                var contractQty = parseFloat(ci.contract_quantity) || 0
+                var installedQty = installed[ci.id] || 0
+                var pct = contractQty > 0 ? Math.round(installedQty / contractQty * 1000) / 10 : 0
+                var pctColor = pct >= 100 ? 'text-emerald-400' : pct > 0 ? 'text-orange-400' : 'text-slate-600'
+                return (
+                  <div key={ci.id} className="grid grid-cols-12 gap-0 px-3 py-2 border-b border-slate-800/50">
+                    <span className="col-span-1 text-orange-400 text-xs font-mono">{ci.item_number}</span>
+                    <div className="col-span-5 min-w-0">
+                      <p className="text-slate-200 text-xs truncate">{ci.description}</p>
+                      <p className="text-slate-600 text-xs">{ci.unit}</p>
+                    </div>
+                    <span className="col-span-2 text-slate-400 text-xs font-mono text-right">{formatNum(contractQty)}</span>
+                    <span className="col-span-2 text-slate-200 text-xs font-mono text-right">{installedQty > 0 ? formatNum(installedQty) : '—'}</span>
+                    <span className={'col-span-2 text-xs font-mono text-right ' + pctColor}>{pct > 0 ? pct + '%' : '—'}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function formatMoney(n) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function Section(props) {
