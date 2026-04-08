@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
+import * as XLSX from 'xlsx'
 
 export default function TotalsPageWrapper() {
   return (
@@ -24,6 +25,7 @@ function TotalsPage() {
   var [equipment, setEquipment] = useState([])
   var [crew, setCrew] = useState([])
   var [photos, setPhotos] = useState([])
+  var [storedByItem, setStoredByItem] = useState({})
   var [fullPhoto, setFullPhoto] = useState(null)
   var [activeTab, setActiveTab] = useState('contract')
 
@@ -63,6 +65,17 @@ function TotalsPage() {
       }
     })
     setInstalledByItem(byItem)
+
+    // Build stored materials map by contract_item_id
+    var storedData = all[5].data || []
+    var storedMap = {}
+    storedData.forEach(function(s) {
+      if (s.contract_item_id) {
+        if (!storedMap[s.contract_item_id]) storedMap[s.contract_item_id] = 0
+        storedMap[s.contract_item_id] += parseFloat(s.quantity) || 0
+      }
+    })
+    setStoredByItem(storedMap)
 
     setQuantities(aggregateByDescUnit(installedData))
     setMaterials(aggregateByDescUnit(deliveredData))
@@ -170,7 +183,7 @@ function TotalsPage() {
       <div className="px-4 py-4 space-y-6">
 
         {activeTab === 'contract' && (
-          <ContractProgress contractItems={contractItems} installedByItem={installedByItem} />
+          <ContractProgress contractItems={contractItems} installedByItem={installedByItem} storedByItem={storedByItem} projectName={project ? project.project_name : 'Project'} />
         )}
 
         {activeTab === 'totals' && (
@@ -266,6 +279,8 @@ function TotalsPage() {
 function ContractProgress(props) {
   var items = props.contractItems || []
   var installed = props.installedByItem || {}
+  var stored = props.storedByItem || {}
+  var projectName = props.projectName || 'Project'
 
   if (items.length === 0) {
     return (
@@ -286,17 +301,16 @@ function ContractProgress(props) {
   })
 
   // Calculate totals
-  var originalValue = 0
-  var originalEarned = 0
-  var revisedValue = 0
-  var revisedEarned = 0
+  var originalValue = 0, originalEarned = 0, revisedValue = 0, revisedEarned = 0, totalStored = 0
 
   items.forEach(function(ci) {
     var contractValue = (parseFloat(ci.contract_quantity) || 0) * (parseFloat(ci.unit_price) || 0)
     var installedQty = installed[ci.id] || 0
     var earnedValue = installedQty * (parseFloat(ci.unit_price) || 0)
+    var storedValue = (stored[ci.id] || 0) * (parseFloat(ci.unit_price) || 0)
     revisedValue += contractValue
     revisedEarned += earnedValue
+    totalStored += storedValue
     if (!ci.change_order) {
       originalValue += contractValue
       originalEarned += earnedValue
@@ -306,6 +320,48 @@ function ContractProgress(props) {
   var coValue = revisedValue - originalValue
   var overallPct = revisedValue > 0 ? Math.round(revisedEarned / revisedValue * 1000) / 10 : 0
 
+  function handleExport() {
+    var rows = [['Item No.', 'Description', 'Unit', 'Unit Price', 'Contract Qty', 'Contract Value', 'Installed To Date', 'Earned To Date', 'Stored Materials', '% Complete', 'Change Order']]
+    items.forEach(function(ci) {
+      var contractQty = parseFloat(ci.contract_quantity) || 0
+      var unitPrice = parseFloat(ci.unit_price) || 0
+      var contractVal = contractQty * unitPrice
+      var instQty = installed[ci.id] || 0
+      var earnedVal = instQty * unitPrice
+      var storedQty = stored[ci.id] || 0
+      var pct = contractQty > 0 ? Math.round(instQty / contractQty * 1000) / 10 : 0
+      rows.push([
+        ci.item_number || '',
+        ci.description || '',
+        ci.unit || '',
+        unitPrice,
+        contractQty,
+        contractVal,
+        instQty,
+        earnedVal,
+        storedQty,
+        pct / 100,
+        ci.change_order || 'Original'
+      ])
+    })
+    // Add summary rows
+    rows.push([])
+    rows.push(['', '', '', '', '', 'Original Contract', '', formatMoney(originalValue)])
+    if (coValue > 0) rows.push(['', '', '', '', '', 'Change Orders', '', formatMoney(coValue)])
+    rows.push(['', '', '', '', '', 'Revised Contract', '', formatMoney(revisedValue)])
+    rows.push(['', '', '', '', '', 'Earned to Date', '', formatMoney(revisedEarned)])
+    if (totalStored > 0) rows.push(['', '', '', '', '', 'Stored Materials', '', formatMoney(totalStored)])
+    rows.push(['', '', '', '', '', '% Complete', '', overallPct + '%'])
+
+    var ws = XLSX.utils.aoa_to_sheet(rows)
+    // Set column widths
+    ws['!cols'] = [{ wch: 8 }, { wch: 40 }, { wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }]
+    // Format price/value columns as currency and % column
+    var wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Contract Progress')
+    XLSX.writeFile(wb, projectName.replace(/[^a-zA-Z0-9 ]/g, '') + ' - Contract Progress.xlsx')
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 space-y-2">
@@ -313,11 +369,17 @@ function ContractProgress(props) {
         {coValue > 0 && <div className="flex justify-between"><span className="text-slate-400 text-xs">Change Orders</span><span className="text-slate-200 text-xs font-mono">${formatMoney(coValue)}</span></div>}
         <div className="flex justify-between border-t border-slate-700 pt-2"><span className="text-white text-sm font-semibold">Revised Contract</span><span className="text-white text-sm font-mono font-semibold">${formatMoney(revisedValue)}</span></div>
         <div className="flex justify-between"><span className="text-orange-400 text-sm">Earned to Date</span><span className="text-orange-400 text-sm font-mono font-semibold">${formatMoney(revisedEarned)}</span></div>
+        {totalStored > 0 && <div className="flex justify-between"><span className="text-slate-400 text-xs">Stored Materials</span><span className="text-slate-300 text-xs font-mono">${formatMoney(totalStored)}</span></div>}
         <div className="w-full bg-slate-700 rounded-full h-2 mt-1">
           <div className="bg-orange-500 h-2 rounded-full" style={{ width: Math.min(overallPct, 100) + '%' }} />
         </div>
         <p className="text-slate-500 text-xs text-right">{overallPct}% complete</p>
       </div>
+
+      <button onClick={handleExport}
+        className="w-full border border-orange-500/30 text-orange-400 py-2.5 rounded-xl text-sm font-semibold active:bg-orange-500/10">
+        Export to Excel
+      </button>
 
       {groupOrder.map(function(key) {
         var label = key === '__original__' ? 'Original Contract' : key
@@ -328,25 +390,28 @@ function ContractProgress(props) {
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
               <div className="grid grid-cols-12 gap-0 px-3 py-2 border-b border-slate-700 bg-slate-800">
                 <span className="col-span-1 text-slate-500 text-xs font-semibold">#</span>
-                <span className="col-span-5 text-slate-500 text-xs font-semibold">Description</span>
+                <span className="col-span-4 text-slate-500 text-xs font-semibold">Description</span>
                 <span className="col-span-2 text-slate-500 text-xs font-semibold text-right">Contract</span>
                 <span className="col-span-2 text-slate-500 text-xs font-semibold text-right">Installed</span>
+                <span className="col-span-1 text-slate-500 text-xs font-semibold text-right">Stored</span>
                 <span className="col-span-2 text-slate-500 text-xs font-semibold text-right">%</span>
               </div>
               {groupItems.map(function(ci) {
                 var contractQty = parseFloat(ci.contract_quantity) || 0
                 var installedQty = installed[ci.id] || 0
+                var storedQty = stored[ci.id] || 0
                 var pct = contractQty > 0 ? Math.round(installedQty / contractQty * 1000) / 10 : 0
                 var pctColor = pct >= 100 ? 'text-emerald-400' : pct > 0 ? 'text-orange-400' : 'text-slate-600'
                 return (
                   <div key={ci.id} className="grid grid-cols-12 gap-0 px-3 py-2 border-b border-slate-800/50">
                     <span className="col-span-1 text-orange-400 text-xs font-mono">{ci.item_number}</span>
-                    <div className="col-span-5 min-w-0">
+                    <div className="col-span-4 min-w-0">
                       <p className="text-slate-200 text-xs truncate">{ci.description}</p>
-                      <p className="text-slate-600 text-xs">{ci.unit}</p>
+                      <p className="text-slate-600 text-xs">{ci.unit}{ci.unit_price ? ' @ $' + Number(ci.unit_price).toFixed(2) : ''}</p>
                     </div>
                     <span className="col-span-2 text-slate-400 text-xs font-mono text-right">{formatNum(contractQty)}</span>
                     <span className="col-span-2 text-slate-200 text-xs font-mono text-right">{installedQty > 0 ? formatNum(installedQty) : '—'}</span>
+                    <span className="col-span-1 text-slate-400 text-xs font-mono text-right">{storedQty > 0 ? formatNum(storedQty) : '—'}</span>
                     <span className={'col-span-2 text-xs font-mono text-right ' + pctColor}>{pct > 0 ? pct + '%' : '—'}</span>
                   </div>
                 )

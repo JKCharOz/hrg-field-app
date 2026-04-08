@@ -12,6 +12,7 @@ import { MaterialsModal } from '@/components/MaterialsModal'
 import { QuantityModal } from '@/components/QuantityModal'
 import { EquipmentModal } from '@/components/EquipmentModal'
 import { CrewModal } from '@/components/CrewModal'
+import { StoredMaterialsModal } from '@/components/StoredMaterialsModal'
 
 function Divider() { return <div style={{ margin: '0 1rem', borderTop: '1px solid rgb(30 41 59)' }} /> }
 function SectionLabel(p) { return <p className="px-4 text-slate-500 text-xs uppercase tracking-widest">{p.text}</p> }
@@ -497,6 +498,15 @@ function DailyLogPage() {
             <span className="text-slate-500 uppercase tracking-wide mt-0.5 text-center leading-tight" style={{ fontSize: '10px' }}>Equipment</span>
           </button>
         </div>
+
+        <div className="px-4">
+          <button onClick={function() { setModal('stored') }}
+            className="w-full flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 active:bg-slate-700 transition-colors text-left">
+            <p className="text-slate-300 text-sm font-semibold">Stored Materials</p>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 flex-shrink-0"><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
+        </div>
+
         <Divider />
 
         <div className="px-4">
@@ -571,8 +581,9 @@ function DailyLogPage() {
       {modal === 'crew' && <CrewModal report={report} project={project} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'quantity' && <QuantityModal report={report} project={project} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'discussed' && <DiscussedModal report={report} onSave={handleReportUpdate} onClose={function() { setModal(null) }} />}
+      {modal === 'stored' && <StoredMaterialsModal report={report} onClose={function() { setModal(null) }} onSaved={function() { loadAll(report.id) }} />}
       {modal === 'calculator' && <CalculatorModal onClose={function() { setModal(null) }} />}
-      {modal && modal !== 'discussed' && modal !== 'remarks' && modal !== 'photo' && modal !== 'materials' && modal !== 'quantity' && modal !== 'equipment' && modal !== 'visitors' && modal !== 'crew' && modal !== 'subcontractors' && modal !== 'testing' && modal !== 'rfi' && modal !== 'nonconforming' && modal !== 'calculator' && <PlaceholderModal title={MODAL_LABELS[modal] || modal} onClose={function() { setModal(null) }} />}
+      {modal && modal !== 'discussed' && modal !== 'remarks' && modal !== 'photo' && modal !== 'materials' && modal !== 'quantity' && modal !== 'equipment' && modal !== 'visitors' && modal !== 'crew' && modal !== 'subcontractors' && modal !== 'testing' && modal !== 'rfi' && modal !== 'nonconforming' && modal !== 'stored' && modal !== 'calculator' && <PlaceholderModal title={MODAL_LABELS[modal] || modal} onClose={function() { setModal(null) }} />}
 
       {toast && (
         <div className="fixed top-20 inset-x-0 flex justify-center z-50 px-4" style={{ pointerEvents: 'none' }}>
