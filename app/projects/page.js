@@ -220,13 +220,26 @@ export default function ProjectsPage() {
                     className="text-orange-400 text-xs px-2 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10">Totals</button>
                   <button onClick={function() { router.push('/projects/edit?id=' + project.id) }}
                     className="text-slate-500 text-xs px-2 py-1 border border-slate-700 rounded-lg active:bg-slate-700">Edit</button>
-                  <button onClick={function() {
-                    if (window.confirm('Delete "' + project.project_name + '" and all its reports, photos, and data? This cannot be undone.')) {
-                      supabase.from('projects').delete().eq('id', project.id).then(function() {
-                        setProjects(function(prev) { return prev.filter(function(p) { return p.id !== project.id }) })
-                        setReports(function(prev) { return prev.filter(function(r) { return r.project_id !== project.id }) })
-                      })
+                  <button onClick={async function() {
+                    if (!window.confirm('Delete "' + project.project_name + '" and all its reports, photos, and data? This cannot be undone.')) return
+                    var pid = project.id
+                    // Delete child records first to avoid FK constraints
+                    var reportIds = reports.filter(function(r) { return r.project_id === pid }).map(function(r) { return r.id })
+                    if (reportIds.length > 0) {
+                      await supabase.from('activity_logs').delete().in('report_id', reportIds)
+                      await supabase.from('materials').delete().in('report_id', reportIds)
+                      await supabase.from('equipment_logs').delete().in('report_id', reportIds)
+                      await supabase.from('crew_logs').delete().in('report_id', reportIds)
+                      await supabase.from('field_photos').delete().in('report_id', reportIds)
+                      await supabase.from('stored_materials').delete().in('report_id', reportIds)
                     }
+                    await supabase.from('daily_reports').delete().eq('project_id', pid)
+                    await supabase.from('contract_items').delete().eq('project_id', pid)
+                    await supabase.from('project_documents').delete().eq('project_id', pid)
+                    var result = await supabase.from('projects').delete().eq('id', pid)
+                    if (result.error) { alert('Delete failed: ' + result.error.message); return }
+                    setProjects(function(prev) { return prev.filter(function(p) { return p.id !== pid }) })
+                    setReports(function(prev) { return prev.filter(function(r) { return r.project_id !== pid }) })
                   }}
                     className="text-red-400 text-xs px-2 py-1 border border-red-800 rounded-lg active:bg-red-900/20">Del</button>
                 </div>
