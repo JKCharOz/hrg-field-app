@@ -417,20 +417,55 @@ export function ProjectDocsModal(props) {
             )}
             {coMode && (
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3 mt-2">
-                <p className="text-white text-sm font-semibold">Import Change Order</p>
-                <input type="text" value={coLabel} onChange={function(e) { setCoLabel(e.target.value) }}
-                  placeholder='e.g. CO #1'
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
-                <input ref={coRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleCoUpload} className="hidden" />
-                <div className="flex gap-2">
-                  <button onClick={function() { if (coLabel.trim()) { coRef.current && coRef.current.click() } else { alert('Enter a change order label first') } }}
-                    disabled={coImporting}
-                    className="flex-1 bg-orange-500 text-white font-bold py-3 rounded-xl text-sm active:bg-orange-600 disabled:opacity-50">
-                    {coImporting ? 'Importing...' : 'Upload CO File'}
-                  </button>
-                  <button onClick={function() { setCoMode(false); setCoLabel('') }}
-                    className="px-4 border border-slate-600 text-slate-400 py-3 rounded-xl text-sm active:bg-slate-800">Cancel</button>
+                <p className="text-white text-sm font-semibold">Add Change Order</p>
+                <div>
+                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">CO Label</p>
+                  <input type="text" value={coLabel} onChange={function(e) { setCoLabel(e.target.value) }}
+                    placeholder='e.g. CO #1'
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
                 </div>
+                {coLabel.trim() && (function() {
+                  var excelDocs = docs.filter(function(d) { var ext = (d.file_type || '').toLowerCase(); return ext === 'xls' || ext === 'xlsx' || ext === 'csv' })
+                  return (
+                    <div className="space-y-3">
+                      {excelDocs.length > 0 && (
+                        <div>
+                          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Import from uploaded document</p>
+                          <div className="space-y-1.5">
+                            {excelDocs.map(function(d) {
+                              return (
+                                <button key={d.id} onClick={async function() {
+                                  setCoImporting(true)
+                                  try {
+                                    var url = supabase.storage.from('field-photos').getPublicUrl(d.storage_path).data.publicUrl
+                                    var res = await fetch(url)
+                                    var buf = await res.arrayBuffer()
+                                    var fakeEvent = { target: { files: [new File([buf], d.file_name)], value: '' } }
+                                    await handleCoUpload(fakeEvent)
+                                  } catch (err) { alert('Failed: ' + err.message); setCoImporting(false) }
+                                }} disabled={coImporting}
+                                  className="w-full text-left bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 active:bg-slate-700 disabled:opacity-50">
+                                  <p className="text-slate-200 text-sm truncate">{d.file_name}</p>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Or upload new file</p>
+                        <input ref={coRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleCoUpload} className="hidden" />
+                        <button onClick={function() { coRef.current && coRef.current.click() }}
+                          disabled={coImporting}
+                          className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl text-sm active:bg-orange-600 disabled:opacity-50">
+                          {coImporting ? 'Importing...' : 'Upload Excel File'}
+                        </button>
+                      </div>
+                      <button onClick={function() { setCoMode(false); setCoLabel('') }}
+                        className="w-full border border-slate-600 text-slate-400 py-2.5 rounded-xl text-sm active:bg-slate-800">Cancel</button>
+                    </div>
+                  )
+                })()}
               </div>
             )}
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3 mt-4">
