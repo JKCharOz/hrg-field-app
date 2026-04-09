@@ -220,6 +220,15 @@ export default function ProjectsPage() {
                     className="text-orange-400 text-xs px-2 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10">Totals</button>
                   <button onClick={function() { router.push('/projects/edit?id=' + project.id) }}
                     className="text-slate-500 text-xs px-2 py-1 border border-slate-700 rounded-lg active:bg-slate-700">Edit</button>
+                  <button onClick={function() {
+                    if (window.confirm('Delete "' + project.project_name + '" and all its reports, photos, and data? This cannot be undone.')) {
+                      supabase.from('projects').delete().eq('id', project.id).then(function() {
+                        setProjects(function(prev) { return prev.filter(function(p) { return p.id !== project.id }) })
+                        setReports(function(prev) { return prev.filter(function(r) { return r.project_id !== project.id }) })
+                      })
+                    }
+                  }}
+                    className="text-red-400 text-xs px-2 py-1 border border-red-800 rounded-lg active:bg-red-900/20">Del</button>
                 </div>
               </div>
               <button onClick={function() { handleProjectPress(project) }} disabled={isLoading}
