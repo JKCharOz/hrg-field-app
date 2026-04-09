@@ -213,6 +213,133 @@ export function ProjectDocsModal(props) {
     setBidItems(function(prev) { return prev.filter(function(b) { return b.id !== id }) })
   }
 
+  async function importDocAsBidItems(doc, changeOrderLabel) {
+    setImporting(true)
+    try {
+      var url = supabase.storage.from('field-photos').getPublicUrl(doc.storage_path).data.publicUrl
+      var res = await fetch(url)
+      if (!res.ok) { alert('Failed to download file'); setImporting(false); return }
+      var buf = await res.arrayBuffer()
+      var wb = XLSX.read(buf)
+
+      var sheetNames = wb.SheetNames
+      var targetSheet = sheetNames.find(function(s) { return s.toLowerCase().indexOf('unit') >= 0 && s.toLowerCase().indexOf('price') >= 0 })
+        || sheetNames.find(function(s) { return s.toLowerCase().indexOf('bid') >= 0 })
+        || sheetNames[0]
+      var ws = wb.Sheets[targetSheet]
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+
+      function cell(row, idx) { return idx >= 0 && row && idx < row.length ? String(row[idx] == null ? '' : row[idx]).trim() : '' }
+
+      var headerIdx = -1
+      var colMap = { item: 0, desc: 1, unit: 2, qty: 3, price: -1 }
+      for (var h = 0; h < Math.min(rows.length, 20); h++) {
+        var row = (rows[h] || []).map(function(c) { return String(c == null ? '' : c).toLowerCase().trim() })
+        var hasItem = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('item') >= 0 || c.indexOf('bid') >= 0 || c.indexOf('#') >= 0 || c.indexOf('no') >= 0) })
+        var hasDesc = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('desc') >= 0 || c.indexOf('name') >= 0) })
+        if (hasItem >= 0 && hasDesc >= 0) {
+          headerIdx = h
+          colMap.item = hasItem
+          colMap.desc = hasDesc
+          for (var ci = 0; ci < row.length; ci++) {
+            if (row[ci].indexOf('unit') >= 0 && row[ci].indexOf('price') < 0) colMap.unit = ci
+            if (row[ci].indexOf('qty') >= 0 || row[ci].indexOf('quant') >= 0) colMap.qty = ci
+            if (row[ci].indexOf('price') >= 0 || row[ci].indexOf('cost') >= 0) colMap.price = ci
+          }
+          break
+        }
+      }
+
+      var stopWords = ['total', 'project total', 'original contract', 'change order']
+      var startRow = headerIdx >= 0 ? headerIdx + 1 : 0
+      while (startRow < rows.length) {
+        var sr = (rows[startRow] || []).map(function(c) { return String(c == null ? '' : c).toLowerCase() }).join(' ')
+        if (sr.indexOf('from previous') >= 0 || sr.indexOf('sub-header') >= 0) { startRow++; continue }
+        break
+      }
+
+      var dataRows = []
+      for (var di = startRow; di < rows.length; di++) {
+        var r = rows[di]
+        var itemVal = cell(r, colMap.item)
+        var descVal = cell(r, colMap.desc)
+        var fullRow = (r || []).map(function(c) { return String(c == null ? '' : c).toLowerCase() }).join(' ')
+        var isStop = stopWords.some(function(sw) { return fullRow.indexOf(sw) >= 0 })
+        if (isStop) continue
+        if (!descVal) continue
+        if (!itemVal && !descVal) continue
+        dataRows.push(r)
+      }
+
+      if (dataRows.length === 0) {
+        alert('No items found. Expected columns with Item/No and Description headers.')
+        setImporting(false)
+        return
+      }
+
+      // Auto-detect unit column from data
+      var commonUnits = ['ls', 'lf', 'ea', 'cy', 'sy', 'sf', 'ton', 'gal']
+      if (dataRows.length > 0) {
+        var firstData = dataRows[0]
+        for (var uc = 0; uc < (firstData || []).length; uc++) {
+          var cv = String(firstData[uc] == null ? '' : firstData[uc]).toLowerCase().trim()
+          if (commonUnits.indexOf(cv) >= 0) {
+            colMap.unit = uc
+            if (uc > 0 && !isNaN(parseFloat(firstData[uc - 1]))) colMap.qty = uc - 1
+            break
+          }
+        }
+      }
+      if (colMap.price < 0 && colMap.unit >= 0) { colMap.price = colMap.unit + 1 }
+
+      // If importing as CO or replacing bid items
+      if (!changeOrderLabel && bidItems.length > 0) {
+        if (!window.confirm('Replace ' + bidItems.length + ' existing bid items with ' + dataRows.length + ' from this file?')) {
+          setImporting(false)
+          return
+        }
+        await supabase.from('contract_items').delete().eq('project_id', project.id).is('change_order', null)
+      }
+
+      var maxSort = bidItems.reduce(function(m, b) { return Math.max(m, b.sort_order || 0) }, 0)
+      var inserts = dataRows.map(function(r, i) {
+        var obj = {
+          project_id: project.id,
+          org_id: project.org_id,
+          item_number: cell(r, colMap.item),
+          description: cell(r, colMap.desc),
+          unit: cell(r, colMap.unit),
+          contract_quantity: colMap.qty >= 0 ? parseFloat(r[colMap.qty]) || 0 : 0,
+          sort_order: changeOrderLabel ? maxSort + 1 + i : i,
+          change_order: changeOrderLabel || null,
+        }
+        if (colMap.price >= 0) {
+          var priceVal = parseFloat(String(r[colMap.price]).replace(/[^0-9.\-]/g, ''))
+          if (!isNaN(priceVal)) { obj.unit_price = priceVal }
+        }
+        return obj
+      })
+
+      var result = await supabase.from('contract_items').insert(inserts).select()
+      if (!result.error && result.data) {
+        if (changeOrderLabel) {
+          setBidItems(function(prev) { return prev.concat(result.data) })
+        } else {
+          setBidItems(function(prev) {
+            var kept = prev.filter(function(b) { return b.change_order })
+            return kept.concat(result.data)
+          })
+        }
+        alert('Imported ' + result.data.length + ' items' + (changeOrderLabel ? ' as ' + changeOrderLabel : ''))
+      } else {
+        alert('Import failed: ' + (result.error ? result.error.message : 'unknown'))
+      }
+    } catch (err) {
+      alert('Failed to read file: ' + err.message)
+    }
+    setImporting(false)
+  }
+
   async function clearAllBidItems() {
     if (!window.confirm('Delete all ' + bidItems.length + ' bid items?')) return
     await supabase.from('contract_items').delete().eq('project_id', project.id)
@@ -362,16 +489,37 @@ export function ProjectDocsModal(props) {
             {docs.length === 0 && <p className="text-slate-600 text-sm text-center py-4">No documents uploaded yet</p>}
             {docs.map(function(doc) {
               var url = supabase.storage.from('field-photos').getPublicUrl(doc.storage_path).data.publicUrl
+              var ext = (doc.file_type || '').toLowerCase()
+              var isExcel = ext === 'xls' || ext === 'xlsx' || ext === 'csv'
               return (
-                <div key={doc.id} className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <a href={url} target="_blank" rel="noreferrer" className="text-slate-200 text-sm truncate block active:text-orange-400">
-                      {doc.file_name}
-                    </a>
-                    <p className="text-slate-600 text-xs mt-0.5">{doc.file_type ? doc.file_type.toUpperCase() : ''}</p>
+                <div key={doc.id} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <a href={url} target="_blank" rel="noreferrer" className="text-slate-200 text-sm truncate block active:text-orange-400">
+                        {doc.file_name}
+                      </a>
+                      <p className="text-slate-600 text-xs mt-0.5">{doc.file_type ? doc.file_type.toUpperCase() : ''}</p>
+                    </div>
+                    <button onClick={function() { deleteDoc(doc.id, doc.storage_path) }}
+                      className="text-slate-600 active:text-red-400 text-xs flex-shrink-0">x</button>
                   </div>
-                  <button onClick={function() { deleteDoc(doc.id, doc.storage_path) }}
-                    className="text-slate-600 active:text-red-400 text-xs flex-shrink-0">x</button>
+                  {isExcel && (
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={function() { importDocAsBidItems(doc, null) }}
+                        disabled={importing}
+                        className="flex-1 text-orange-400 text-xs py-1.5 border border-orange-500/30 rounded-lg active:bg-orange-500/10 disabled:opacity-50">
+                        {importing ? '...' : 'Import as Bid Items'}
+                      </button>
+                      <button onClick={function() {
+                        var label = window.prompt('Change Order label (e.g. CO #1):')
+                        if (label && label.trim()) { importDocAsBidItems(doc, label.trim()) }
+                      }}
+                        disabled={importing}
+                        className="flex-1 text-slate-400 text-xs py-1.5 border border-slate-700 rounded-lg active:bg-slate-700 disabled:opacity-50">
+                        {importing ? '...' : 'Import as CO'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -383,7 +531,7 @@ export function ProjectDocsModal(props) {
             {bidItems.length === 0 && (
               <div className="text-center py-6">
                 <p className="text-slate-500 text-sm mb-1">No bid items yet</p>
-                <p className="text-slate-600 text-xs">Upload an Excel file with your bid schedule</p>
+                <p className="text-slate-600 text-xs">Upload an Excel file in Documents, then tap "Import as Bid Items"</p>
               </div>
             )}
             {bidItems.length > 0 && (
@@ -410,63 +558,6 @@ export function ProjectDocsModal(props) {
             {bidItems.length > 0 && (
               <button onClick={clearAllBidItems}
                 className="w-full border border-red-800 text-red-400 py-2.5 rounded-xl text-sm active:bg-red-900/20 mt-2">Clear All Bid Items</button>
-            )}
-            {bidItems.length > 0 && !coMode && (
-              <button onClick={function() { setCoMode(true) }}
-                className="w-full border border-slate-600 text-slate-300 py-2.5 rounded-xl text-sm active:bg-slate-800 mt-2">Add Change Order</button>
-            )}
-            {coMode && (
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3 mt-2">
-                <p className="text-white text-sm font-semibold">Add Change Order</p>
-                <div>
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">CO Label</p>
-                  <input type="text" value={coLabel} onChange={function(e) { setCoLabel(e.target.value) }}
-                    placeholder='e.g. CO #1'
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500" />
-                </div>
-                {coLabel.trim() && (function() {
-                  var excelDocs = docs.filter(function(d) { var ext = (d.file_type || '').toLowerCase(); return ext === 'xls' || ext === 'xlsx' || ext === 'csv' })
-                  return (
-                    <div className="space-y-3">
-                      {excelDocs.length > 0 && (
-                        <div>
-                          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Import from uploaded document</p>
-                          <div className="space-y-1.5">
-                            {excelDocs.map(function(d) {
-                              return (
-                                <button key={d.id} onClick={async function() {
-                                  setCoImporting(true)
-                                  try {
-                                    var url = supabase.storage.from('field-photos').getPublicUrl(d.storage_path).data.publicUrl
-                                    var res = await fetch(url)
-                                    var buf = await res.arrayBuffer()
-                                    var fakeEvent = { target: { files: [new File([buf], d.file_name)], value: '' } }
-                                    await handleCoUpload(fakeEvent)
-                                  } catch (err) { alert('Failed: ' + err.message); setCoImporting(false) }
-                                }} disabled={coImporting}
-                                  className="w-full text-left bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 active:bg-slate-700 disabled:opacity-50">
-                                  <p className="text-slate-200 text-sm truncate">{d.file_name}</p>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Or upload new file</p>
-                        <input ref={coRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleCoUpload} className="hidden" />
-                        <button onClick={function() { coRef.current && coRef.current.click() }}
-                          disabled={coImporting}
-                          className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl text-sm active:bg-orange-600 disabled:opacity-50">
-                          {coImporting ? 'Importing...' : 'Upload Excel File'}
-                        </button>
-                      </div>
-                      <button onClick={function() { setCoMode(false); setCoLabel('') }}
-                        className="w-full border border-slate-600 text-slate-400 py-2.5 rounded-xl text-sm active:bg-slate-800">Cancel</button>
-                    </div>
-                  )
-                })()}
-              </div>
             )}
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3 mt-4">
               <p className="text-white text-sm font-semibold">Add Individual Item</p>
@@ -508,24 +599,11 @@ export function ProjectDocsModal(props) {
       </div>
 
       <div className="fixed bottom-0 inset-x-0 bg-slate-950/95 border-t border-slate-800 p-4">
-        {tab === 'docs' && (
-          <div>
-            <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.dwg,.dxf" multiple onChange={handleDocUpload} className="hidden" />
-            <button onClick={function() { docRef.current && docRef.current.click() }} disabled={uploading}
-              className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-50 transition-colors">
-              {uploading ? 'Uploading...' : 'Upload Documents'}
-            </button>
-          </div>
-        )}
-        {tab === 'bid' && (
-          <div>
-            <input ref={bidRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleBidUpload} className="hidden" />
-            <button onClick={function() { bidRef.current && bidRef.current.click() }} disabled={importing}
-              className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-50 transition-colors">
-              {importing ? 'Importing...' : 'Upload Bid Schedule (Excel)'}
-            </button>
-          </div>
-        )}
+        <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.dwg,.dxf" multiple onChange={handleDocUpload} className="hidden" />
+        <button onClick={function() { docRef.current && docRef.current.click() }} disabled={uploading}
+          className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-50 transition-colors">
+          {uploading ? 'Uploading...' : 'Upload Files'}
+        </button>
       </div>
     </div>
   )
