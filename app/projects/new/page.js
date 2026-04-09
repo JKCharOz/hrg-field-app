@@ -87,10 +87,10 @@ function NewProjectPage() {
       <div className="p-4 space-y-4 pb-24">
         {error && <p className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-xl px-4 py-3">{error}</p>}
 
-        <Field value={form.project_name} onChange={function(v) { setField('project_name', v) }} label="Project Name" required={true} placeholder="e.g. Main Street Sewer Replacement" />
-        <Field value={form.project_number} onChange={function(v) { setField('project_number', v) }} label="Project Number" placeholder="e.g. 2024-001" />
-        <Field value={form.owner} onChange={function(v) { setField('owner', v) }} label="Owner" placeholder="e.g. Capital Region Water" />
-        <Field value={form.contractor} onChange={function(v) { setField('contractor', v) }} label="Contractor" placeholder="e.g. Rogele Inc." />
+        <Field value={form.project_name} onChange={function(v) { setField('project_name', v) }} label="Project Name" required={true} placeholder="e.g. Elm Street Improvements" />
+        <Field value={form.project_number} onChange={function(v) { setField('project_number', v) }} label="Project Number" placeholder="e.g. 2025-001" />
+        <Field value={form.owner} onChange={function(v) { setField('owner', v) }} label="Owner" placeholder="e.g. City of Springfield" />
+        <Field value={form.contractor} onChange={function(v) { setField('contractor', v) }} label="Contractor" placeholder="e.g. ABC Construction LLC" />
 
         <button onClick={handleSave} disabled={saving || !form.project_name.trim()}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-40 transition-colors mt-4">
