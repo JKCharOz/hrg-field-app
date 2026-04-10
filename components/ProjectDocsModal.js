@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
+import { MarkupEditor } from '@/components/MarkupEditor'
 
 export function ProjectDocsModal(props) {
   var project = props.project
@@ -16,6 +17,7 @@ export function ProjectDocsModal(props) {
   var [uploadFolder, setUploadFolder] = useState('General')
   var [addItemForm, setAddItemForm] = useState({ item_number: '', description: '', unit: '', qty: '', unit_price: '', change_order: '' })
   var [addingItem, setAddingItem] = useState(false)
+  var [markupDoc, setMarkupDoc] = useState(null)
   var docRef = useRef(null)
 
   var FOLDERS = ['Plans', 'Specs', 'Submittals', 'Change Orders', 'General']
@@ -507,7 +509,7 @@ export function ProjectDocsModal(props) {
               var folderDocs = docs.filter(function(d) { return (d.folder || 'General') === folder })
               if (folderDocs.length === 0) return null
               return <DocFolder key={folder} folder={folder} docs={folderDocs} folders={FOLDERS}
-                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} />
+                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} onMarkup={setMarkupDoc} />
             })}
             <div className="pt-2">
               <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Upload to folder</p>
@@ -604,6 +606,15 @@ export function ProjectDocsModal(props) {
           {uploading ? 'Uploading...' : 'Upload Files'}
         </button>
       </div>
+      {markupDoc && (
+        <MarkupEditor
+          imageUrl={supabase.storage.from('field-photos').getPublicUrl(markupDoc.storage_path).data.publicUrl}
+          project={project}
+          originalName={markupDoc.file_name}
+          onClose={function() { setMarkupDoc(null) }}
+          onSaved={function(newDoc) { if (newDoc) { setDocs(function(prev) { return [newDoc].concat(prev) }) } }}
+        />
+      )}
     </div>
   )
 }
@@ -633,6 +644,7 @@ function DocFolder(props) {
             var url = supabase.storage.from('field-photos').getPublicUrl(doc.storage_path).data.publicUrl
             var ext = (doc.file_type || '').toLowerCase()
             var isExcel = ext === 'xls' || ext === 'xlsx' || ext === 'csv'
+            var isImage = ext === 'png' || ext === 'jpg' || ext === 'jpeg'
             return (
               <div key={doc.id} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
@@ -665,6 +677,14 @@ function DocFolder(props) {
                       disabled={props.importing}
                       className="flex-1 text-slate-400 text-xs py-1.5 border border-slate-700 rounded-lg active:bg-slate-700 disabled:opacity-50">
                       {props.importing ? '...' : 'Import as CO'}
+                    </button>
+                  </div>
+                )}
+                {isImage && (
+                  <div className="mt-2">
+                    <button onClick={function() { props.onMarkup(doc) }}
+                      className="w-full text-emerald-400 text-xs py-1.5 border border-emerald-500/30 rounded-lg active:bg-emerald-500/10">
+                      Markup
                     </button>
                   </div>
                 )}
