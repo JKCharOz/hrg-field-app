@@ -13,14 +13,12 @@ export function ProjectDocsModal(props) {
   var [loading, setLoading] = useState(true)
   var [uploading, setUploading] = useState(false)
   var [importing, setImporting] = useState(false)
-  var [coMode, setCoMode] = useState(false)
-  var [coLabel, setCoLabel] = useState('')
-  var [coImporting, setCoImporting] = useState(false)
+  var [uploadFolder, setUploadFolder] = useState('General')
   var [addItemForm, setAddItemForm] = useState({ item_number: '', description: '', unit: '', qty: '', unit_price: '', change_order: '' })
   var [addingItem, setAddingItem] = useState(false)
   var docRef = useRef(null)
-  var bidRef = useRef(null)
-  var coRef = useRef(null)
+
+  var FOLDERS = ['Plans', 'Specs', 'Submittals', 'Change Orders', 'General']
 
   useEffect(function() {
     if (project && project.id) { loadAll() }
@@ -37,6 +35,15 @@ export function ProjectDocsModal(props) {
     setLoading(false)
   }
 
+  function guessFolder(fileName) {
+    var lower = fileName.toLowerCase()
+    if (lower.indexOf('plan') >= 0 || lower.indexOf('drawing') >= 0 || lower.indexOf('dwg') >= 0 || lower.indexOf('sheet') >= 0) return 'Plans'
+    if (lower.indexOf('spec') >= 0) return 'Specs'
+    if (lower.indexOf('submittal') >= 0) return 'Submittals'
+    if (lower.indexOf('change') >= 0 || lower.indexOf('co ') >= 0 || lower.indexOf('co#') >= 0 || lower.indexOf('co-') >= 0) return 'Change Orders'
+    return uploadFolder
+  }
+
   async function handleDocUpload(e) {
     var files = e.target.files
     if (!files || files.length === 0) return
@@ -44,6 +51,7 @@ export function ProjectDocsModal(props) {
     for (var i = 0; i < files.length; i++) {
       var file = files[i]
       var ext = file.name.split('.').pop()
+      var folder = guessFolder(file.name)
       var path = project.id + '/docs/' + Date.now() + '-' + i + '.' + ext
       var upload = await supabase.storage.from('field-photos').upload(path, file, { upsert: false })
       if (!upload.error) {
@@ -53,6 +61,7 @@ export function ProjectDocsModal(props) {
           file_name: file.name,
           storage_path: path,
           file_type: ext.toLowerCase(),
+          folder: folder,
         }).select().single()
         if (!insert.error && insert.data) {
           setDocs(function(prev) { return [insert.data].concat(prev) })
@@ -61,6 +70,13 @@ export function ProjectDocsModal(props) {
     }
     setUploading(false)
     e.target.value = ''
+  }
+
+  async function moveDocFolder(id, newFolder) {
+    var result = await supabase.from('project_documents').update({ folder: newFolder }).eq('id', id).select().single()
+    if (!result.error && result.data) {
+      setDocs(function(prev) { return prev.map(function(d) { return d.id === id ? result.data : d }) })
+    }
   }
 
   async function deleteDoc(id, path) {
@@ -485,44 +501,27 @@ export function ProjectDocsModal(props) {
         {loading && <p className="text-slate-600 text-sm text-center py-8">Loading...</p>}
 
         {!loading && tab === 'docs' && (
-          <div className="px-4 py-4 space-y-3">
+          <div className="px-4 py-4 space-y-4">
             {docs.length === 0 && <p className="text-slate-600 text-sm text-center py-4">No documents uploaded yet</p>}
-            {docs.map(function(doc) {
-              var url = supabase.storage.from('field-photos').getPublicUrl(doc.storage_path).data.publicUrl
-              var ext = (doc.file_type || '').toLowerCase()
-              var isExcel = ext === 'xls' || ext === 'xlsx' || ext === 'csv'
-              return (
-                <div key={doc.id} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <a href={url} target="_blank" rel="noreferrer" className="text-slate-200 text-sm truncate block active:text-orange-400">
-                        {doc.file_name}
-                      </a>
-                      <p className="text-slate-600 text-xs mt-0.5">{doc.file_type ? doc.file_type.toUpperCase() : ''}</p>
-                    </div>
-                    <button onClick={function() { deleteDoc(doc.id, doc.storage_path) }}
-                      className="text-slate-600 active:text-red-400 text-xs flex-shrink-0">x</button>
-                  </div>
-                  {isExcel && (
-                    <div className="flex gap-2 mt-2">
-                      <button onClick={function() { importDocAsBidItems(doc, null) }}
-                        disabled={importing}
-                        className="flex-1 text-orange-400 text-xs py-1.5 border border-orange-500/30 rounded-lg active:bg-orange-500/10 disabled:opacity-50">
-                        {importing ? '...' : 'Import as Bid Items'}
-                      </button>
-                      <button onClick={function() {
-                        var label = window.prompt('Change Order label (e.g. CO #1):')
-                        if (label && label.trim()) { importDocAsBidItems(doc, label.trim()) }
-                      }}
-                        disabled={importing}
-                        className="flex-1 text-slate-400 text-xs py-1.5 border border-slate-700 rounded-lg active:bg-slate-700 disabled:opacity-50">
-                        {importing ? '...' : 'Import as CO'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
+            {FOLDERS.map(function(folder) {
+              var folderDocs = docs.filter(function(d) { return (d.folder || 'General') === folder })
+              if (folderDocs.length === 0) return null
+              return <DocFolder key={folder} folder={folder} docs={folderDocs} folders={FOLDERS}
+                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} />
             })}
+            <div className="pt-2">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Upload to folder</p>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {FOLDERS.map(function(f) {
+                  return (
+                    <button key={f} onClick={function() { setUploadFolder(f) }}
+                      className={'px-3 py-1.5 rounded-lg border text-xs transition-colors ' + (uploadFolder === f ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-slate-700 text-slate-500 active:bg-slate-800')}>
+                      {f}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         )}
 
@@ -605,6 +604,75 @@ export function ProjectDocsModal(props) {
           {uploading ? 'Uploading...' : 'Upload Files'}
         </button>
       </div>
+    </div>
+  )
+}
+
+function DocFolder(props) {
+  var [open, setOpen] = useState(true)
+  var folder = props.folder
+  var folderDocs = props.docs
+  var folders = props.folders
+
+  return (
+    <div>
+      <button onClick={function() { setOpen(function(o) { return !o }) }}
+        className="w-full flex items-center justify-between py-1.5 active:opacity-70">
+        <span className="text-slate-300 text-xs font-semibold uppercase tracking-wider">{folder}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-slate-600 text-xs">{folderDocs.length}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            className="text-slate-600" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+      </button>
+      {open && (
+        <div className="space-y-2 mt-1">
+          {folderDocs.map(function(doc) {
+            var url = supabase.storage.from('field-photos').getPublicUrl(doc.storage_path).data.publicUrl
+            var ext = (doc.file_type || '').toLowerCase()
+            var isExcel = ext === 'xls' || ext === 'xlsx' || ext === 'csv'
+            return (
+              <div key={doc.id} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <a href={url} target="_blank" rel="noreferrer" className="text-slate-200 text-sm truncate block active:text-orange-400">
+                      {doc.file_name}
+                    </a>
+                    <p className="text-slate-600 text-xs mt-0.5">{doc.file_type ? doc.file_type.toUpperCase() : ''}</p>
+                  </div>
+                  <select
+                    value={doc.folder || 'General'}
+                    onChange={function(e) { props.onMove(doc.id, e.target.value) }}
+                    className="bg-slate-700 border border-slate-600 rounded-lg px-1.5 py-1 text-slate-400 text-xs focus:outline-none">
+                    {folders.map(function(f) { return <option key={f} value={f}>{f}</option> })}
+                  </select>
+                  <button onClick={function() { props.onDelete(doc.id, doc.storage_path) }}
+                    className="text-slate-600 active:text-red-400 text-xs flex-shrink-0">x</button>
+                </div>
+                {isExcel && (
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={function() { props.onImportBid(doc, null) }}
+                      disabled={props.importing}
+                      className="flex-1 text-orange-400 text-xs py-1.5 border border-orange-500/30 rounded-lg active:bg-orange-500/10 disabled:opacity-50">
+                      {props.importing ? '...' : 'Import as Bid Items'}
+                    </button>
+                    <button onClick={function() {
+                      var label = window.prompt('Change Order label (e.g. CO #1):')
+                      if (label && label.trim()) { props.onImportBid(doc, label.trim()) }
+                    }}
+                      disabled={props.importing}
+                      className="flex-1 text-slate-400 text-xs py-1.5 border border-slate-700 rounded-lg active:bg-slate-700 disabled:opacity-50">
+                      {props.importing ? '...' : 'Import as CO'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
