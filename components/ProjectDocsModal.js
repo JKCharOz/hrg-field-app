@@ -18,6 +18,10 @@ export function ProjectDocsModal(props) {
   var [addItemForm, setAddItemForm] = useState({ item_number: '', description: '', unit: '', qty: '', unit_price: '', change_order: '' })
   var [addingItem, setAddingItem] = useState(false)
   var [markupDoc, setMarkupDoc] = useState(null)
+  var [pdfPicker, setPdfPicker] = useState(null)
+  var [pdfLoading, setPdfLoading] = useState(false)
+  var [pdfNumPages, setPdfNumPages] = useState(0)
+  var [pdfPageInput, setPdfPageInput] = useState('1')
   var docRef = useRef(null)
 
   var FOLDERS = ['Plans', 'Specs', 'Submittals', 'Change Orders', 'General']
@@ -358,6 +362,31 @@ export function ProjectDocsModal(props) {
     setImporting(false)
   }
 
+  async function openPdfMarkup(doc, pageNum) {
+    setPdfLoading(true)
+    try {
+      var url = supabase.storage.from('field-photos').getPublicUrl(doc.storage_path).data.publicUrl
+      var res = await fetch('/api/pdf-to-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url, page: pageNum }),
+      })
+      var json = await res.json()
+      if (!res.ok || !json.image) { alert('Failed to load PDF page: ' + (json.error || 'unknown')); setPdfLoading(false); return }
+      setPdfNumPages(json.numPages)
+      // Create a fake doc object with the rendered image as a data URL
+      setMarkupDoc({
+        storage_path: null,
+        file_name: doc.file_name + ' (Page ' + pageNum + ')',
+        _dataUrl: json.image,
+      })
+      setPdfPicker(null)
+    } catch (err) {
+      alert('Failed: ' + err.message)
+    }
+    setPdfLoading(false)
+  }
+
   async function clearAllBidItems() {
     if (!window.confirm('Delete all ' + bidItems.length + ' bid items?')) return
     await supabase.from('contract_items').delete().eq('project_id', project.id)
@@ -509,7 +538,8 @@ export function ProjectDocsModal(props) {
               var folderDocs = docs.filter(function(d) { return (d.folder || 'General') === folder })
               if (folderDocs.length === 0) return null
               return <DocFolder key={folder} folder={folder} docs={folderDocs} folders={FOLDERS}
-                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} onMarkup={setMarkupDoc} />
+                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} onMarkup={setMarkupDoc}
+                onPdfMarkup={function(doc) { setPdfPicker(doc); setPdfPageInput('1') }} />
             })}
             <div className="pt-2">
               <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Upload to folder</p>
@@ -608,12 +638,33 @@ export function ProjectDocsModal(props) {
       </div>
       {markupDoc && (
         <MarkupEditor
-          imageUrl={supabase.storage.from('field-photos').getPublicUrl(markupDoc.storage_path).data.publicUrl}
+          imageUrl={markupDoc._dataUrl || supabase.storage.from('field-photos').getPublicUrl(markupDoc.storage_path).data.publicUrl}
           project={project}
           originalName={markupDoc.file_name}
           onClose={function() { setMarkupDoc(null) }}
           onSaved={function(newDoc) { if (newDoc) { setDocs(function(prev) { return [newDoc].concat(prev) }) } }}
         />
+      )}
+      {pdfPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={function() { if (!pdfLoading) setPdfPicker(null) }}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mx-4 space-y-4 w-full max-w-sm" onClick={function(e) { e.stopPropagation() }}>
+            <p className="text-white font-bold text-lg">Select Page</p>
+            <p className="text-slate-400 text-sm truncate">{pdfPicker.file_name}</p>
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Page Number</p>
+              <input type="number" value={pdfPageInput} onChange={function(e) { setPdfPageInput(e.target.value) }}
+                min="1" placeholder="1"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500" />
+            </div>
+            <button onClick={function() { openPdfMarkup(pdfPicker, parseInt(pdfPageInput) || 1) }}
+              disabled={pdfLoading}
+              className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-sm active:bg-orange-600 disabled:opacity-50">
+              {pdfLoading ? 'Loading page...' : 'Open for Markup'}
+            </button>
+            <button onClick={function() { setPdfPicker(null) }}
+              className="w-full border border-slate-600 text-slate-400 py-3 rounded-xl text-sm active:bg-slate-800">Cancel</button>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -645,6 +696,7 @@ function DocFolder(props) {
             var ext = (doc.file_type || '').toLowerCase()
             var isExcel = ext === 'xls' || ext === 'xlsx' || ext === 'csv'
             var isImage = ext === 'png' || ext === 'jpg' || ext === 'jpeg'
+            var isPdf = ext === 'pdf'
             return (
               <div key={doc.id} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
@@ -680,9 +732,9 @@ function DocFolder(props) {
                     </button>
                   </div>
                 )}
-                {isImage && (
+                {(isImage || isPdf) && (
                   <div className="mt-2">
-                    <button onClick={function() { props.onMarkup(doc) }}
+                    <button onClick={function() { if (isPdf) { props.onPdfMarkup(doc) } else { props.onMarkup(doc) } }}
                       className="w-full text-emerald-400 text-xs py-1.5 border border-emerald-500/30 rounded-lg active:bg-emerald-500/10">
                       Markup
                     </button>
