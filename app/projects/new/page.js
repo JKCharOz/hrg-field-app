@@ -38,7 +38,9 @@ function NewProjectPage() {
     project_number: '',
     owner: '',
     contractor: '',
-      })
+    project_engineer: '',
+    location: '',
+  })
 
   useEffect(function() {
     loadProfile()
@@ -66,6 +68,8 @@ function NewProjectPage() {
       project_number: form.project_number.trim() || null,
       owner: form.owner.trim() || null,
       general_contractor: form.contractor.trim() || null,
+      project_engineer: form.project_engineer.trim() || null,
+      location: form.location.trim() || null,
     }
     var result = await supabase.from('projects').insert(payload).select().single()
     setSaving(false)
@@ -91,6 +95,8 @@ function NewProjectPage() {
         <Field value={form.project_number} onChange={function(v) { setField('project_number', v) }} label="Project Number" placeholder="e.g. 2025-001" />
         <Field value={form.owner} onChange={function(v) { setField('owner', v) }} label="Owner" placeholder="e.g. City of Springfield" />
         <Field value={form.contractor} onChange={function(v) { setField('contractor', v) }} label="Contractor" placeholder="e.g. ABC Construction LLC" />
+        <Field value={form.project_engineer} onChange={function(v) { setField('project_engineer', v) }} label="Project Engineer" placeholder="e.g. John Smith, PE" />
+        <Field value={form.location} onChange={function(v) { setField('location', v) }} label="Location" placeholder="e.g. Springfield, PA" />
 
         <button onClick={handleSave} disabled={saving || !form.project_name.trim()}
           className="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl text-base active:bg-orange-600 disabled:opacity-40 transition-colors mt-4">
