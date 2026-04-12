@@ -727,7 +727,7 @@ function DocFolder(props) {
                       if (label && label.trim()) { props.onImportBid(doc, label.trim()) }
                     }}
                       disabled={props.importing}
-                      className="flex-1 text-slate-400 text-xs py-1.5 border border-slate-700 rounded-lg active:bg-slate-700 disabled:opacity-50">
+                      className="flex-1 text-orange-400 text-xs py-1.5 border border-orange-500/30 rounded-lg active:bg-orange-500/10 disabled:opacity-50">
                       {props.importing ? '...' : 'Import as CO'}
                     </button>
                   </div>
