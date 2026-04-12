@@ -349,6 +349,39 @@ export function MarkupEditor(props) {
     saveHistory()
   }
 
+  function handleWheel(e) {
+    e.preventDefault()
+    var delta = e.deltaY > 0 ? 0.9 : 1.1
+    var newScale = Math.max(0.2, Math.min(5, viewScale * delta))
+    // Zoom toward cursor position
+    var rect = containerRef.current.getBoundingClientRect()
+    var mx = e.clientX - rect.left
+    var my = e.clientY - rect.top
+    var newOffX = mx - (mx - viewOffset.x) * (newScale / viewScale)
+    var newOffY = my - (my - viewOffset.y) * (newScale / viewScale)
+    setViewScale(newScale)
+    setViewOffset({ x: newOffX, y: newOffY })
+  }
+
+  function zoomIn() {
+    setViewScale(function(s) { return Math.min(5, s * 1.3) })
+  }
+
+  function zoomOut() {
+    setViewScale(function(s) { return Math.max(0.2, s * 0.7) })
+  }
+
+  function zoomFit() {
+    var canvas = canvasRef.current
+    if (!canvas) return
+    var container = containerRef.current
+    var maxW = container ? container.clientWidth - 16 : window.innerWidth - 16
+    var maxH = window.innerHeight - 200
+    var fitScale = Math.min(maxW / canvas.width, maxH / canvas.height, 1)
+    setViewScale(fitScale)
+    setViewOffset({ x: 0, y: 0 })
+  }
+
   async function handleSave() {
     setSaving(true)
     try {
@@ -402,9 +435,14 @@ export function MarkupEditor(props) {
     <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col">
       <div className="flex items-center justify-between px-4 pt-12 pb-2 bg-slate-900 border-b border-slate-700 flex-shrink-0">
         <button onClick={onClose} className="text-slate-400 text-sm active:text-white">Cancel</button>
-        <button onClick={function() { setShowTools(function(v) { return !v }) }} className="text-slate-500 text-xs px-2 py-1 border border-slate-700 rounded-lg">
-          {showTools ? 'Hide Tools' : 'Show Tools'}
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={zoomOut} className="text-slate-400 text-sm w-8 h-8 flex items-center justify-center border border-slate-700 rounded-lg active:bg-slate-800">−</button>
+          <button onClick={zoomFit} className="text-slate-500 text-xs px-2 h-8 flex items-center justify-center border border-slate-700 rounded-lg active:bg-slate-800">{Math.round(viewScale * 100)}%</button>
+          <button onClick={zoomIn} className="text-slate-400 text-sm w-8 h-8 flex items-center justify-center border border-slate-700 rounded-lg active:bg-slate-800">+</button>
+          <button onClick={function() { setShowTools(function(v) { return !v }) }} className="text-slate-500 text-xs px-2 h-8 flex items-center justify-center border border-slate-700 rounded-lg ml-1">
+            {showTools ? 'Hide' : 'Tools'}
+          </button>
+        </div>
         <button onClick={handleSave} disabled={saving}
           className="text-orange-400 text-sm font-semibold active:text-orange-300 disabled:opacity-40">
           {saving ? 'Saving...' : 'Save'}
@@ -419,7 +457,8 @@ export function MarkupEditor(props) {
         onMouseDown={handleStart}
         onMouseMove={handleMove}
         onMouseUp={handleEnd}
-        onMouseLeave={handleEnd}>
+        onMouseLeave={handleEnd}
+        onWheel={handleWheel}>
         {!imgLoaded && <p className="text-slate-500 text-sm absolute inset-0 flex items-center justify-center">Loading image...</p>}
         <canvas ref={canvasRef} style={canvasStyle()} />
         <canvas ref={overlayRef} style={Object.assign({}, canvasStyle(), { position: 'absolute', top: 0, left: 0, pointerEvents: 'none' })} />
