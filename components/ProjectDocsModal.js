@@ -533,17 +533,9 @@ export function ProjectDocsModal(props) {
 
         {!loading && tab === 'docs' && (
           <div className="px-4 py-4 space-y-4">
-            {docs.length === 0 && <p className="text-slate-600 text-sm text-center py-4">No documents uploaded yet</p>}
-            {FOLDERS.map(function(folder) {
-              var folderDocs = docs.filter(function(d) { return (d.folder || 'General') === folder })
-              if (folderDocs.length === 0) return null
-              return <DocFolder key={folder} folder={folder} docs={folderDocs} folders={FOLDERS}
-                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} onMarkup={setMarkupDoc}
-                onPdfMarkup={function(doc) { setPdfPicker(doc); setPdfPageInput('1') }} />
-            })}
-            <div className="pt-2">
+            <div>
               <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Upload to folder</p>
-              <div className="flex flex-wrap gap-1.5 mb-3">
+              <div className="flex flex-wrap gap-1.5">
                 {FOLDERS.map(function(f) {
                   return (
                     <button key={f} onClick={function() { setUploadFolder(f) }}
@@ -554,6 +546,14 @@ export function ProjectDocsModal(props) {
                 })}
               </div>
             </div>
+            {docs.length === 0 && <p className="text-slate-600 text-sm text-center py-4">No documents uploaded yet</p>}
+            {FOLDERS.map(function(folder) {
+              var folderDocs = docs.filter(function(d) { return (d.folder || 'General') === folder })
+              if (folderDocs.length === 0) return null
+              return <DocFolder key={folder} folder={folder} docs={folderDocs} folders={FOLDERS}
+                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} onMarkup={setMarkupDoc}
+                onPdfMarkup={function(doc) { setPdfPicker(doc); setPdfPageInput('1') }} />
+            })}
           </div>
         )}
 
@@ -671,7 +671,7 @@ export function ProjectDocsModal(props) {
 }
 
 function DocFolder(props) {
-  var [open, setOpen] = useState(true)
+  var [open, setOpen] = useState(false)
   var folder = props.folder
   var folderDocs = props.docs
   var folders = props.folders
