@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
 import * as XLSX from 'xlsx'
+import { QuickQuantityModal } from '@/components/QuickQuantityModal'
 
 export default function TotalsPageWrapper() {
   return (
@@ -28,6 +29,7 @@ function TotalsPage() {
   var [storedByItem, setStoredByItem] = useState({})
   var [fullPhoto, setFullPhoto] = useState(null)
   var [activeTab, setActiveTab] = useState('contract')
+  var [quickEntryItem, setQuickEntryItem] = useState(null)
 
   var projectId = params.get('id')
 
@@ -47,22 +49,23 @@ function TotalsPage() {
       supabase.from('materials').select('*').eq('project_id', projectId).eq('is_delivery', true),
       supabase.from('field_photos').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('stored_materials').select('*').eq('project_id', projectId),
+      supabase.from('quantity_entries').select('*').eq('project_id', projectId),
     ])
 
     var reportIds = (all[0].data || []).map(function(r) { return r.id })
     var ciData = all[1].data || []
     var installedData = all[2].data || []
     var deliveredData = all[3].data || []
+    var entriesData = all[6].data || []
 
     setContractItems(ciData)
 
-    // Build installed-to-date map by contract_item_id
+    // Installed-to-date per contract item comes from quantity_entries
     var byItem = {}
-    installedData.forEach(function(m) {
-      if (m.contract_item_id) {
-        if (!byItem[m.contract_item_id]) byItem[m.contract_item_id] = 0
-        byItem[m.contract_item_id] += parseFloat(m.quantity) || 0
-      }
+    entriesData.forEach(function(qe) {
+      if (!qe.contract_item_id) return
+      if (!byItem[qe.contract_item_id]) byItem[qe.contract_item_id] = 0
+      byItem[qe.contract_item_id] += parseFloat(qe.quantity) || 0
     })
     setInstalledByItem(byItem)
 
@@ -77,7 +80,10 @@ function TotalsPage() {
     })
     setStoredByItem(storedMap)
 
-    setQuantities(aggregateByDescUnit(installedData))
+    // Generic "Quantity Installed" aggregation: only non-bid-tied materials
+    // (bid-tied installed qty now lives in quantity_entries and shows in Contract Progress)
+    var genericInstalled = installedData.filter(function(m) { return !m.contract_item_id })
+    setQuantities(aggregateByDescUnit(genericInstalled))
     setMaterials(aggregateByDescUnit(deliveredData))
 
     if (reportIds.length > 0) {
@@ -183,7 +189,8 @@ function TotalsPage() {
       <div className="px-4 py-4 space-y-6">
 
         {activeTab === 'contract' && (
-          <ContractProgress contractItems={contractItems} installedByItem={installedByItem} storedByItem={storedByItem} projectName={project ? project.project_name : 'Project'} />
+          <ContractProgress contractItems={contractItems} installedByItem={installedByItem} storedByItem={storedByItem} projectName={project ? project.project_name : 'Project'}
+            onQuickEntry={setQuickEntryItem} />
         )}
 
         {activeTab === 'totals' && (
@@ -271,6 +278,15 @@ function TotalsPage() {
             className="absolute top-12 right-4 text-white text-2xl z-10 bg-black/50 w-10 h-10 rounded-full flex items-center justify-center">×</button>
           <img src={fullPhoto} className="max-w-full max-h-full object-contain" />
         </div>
+      )}
+
+      {quickEntryItem && project && (
+        <QuickQuantityModal
+          project={project}
+          contractItem={quickEntryItem}
+          onClose={function() { setQuickEntryItem(null) }}
+          onChanged={loadAll}
+        />
       )}
     </div>
   )
@@ -403,7 +419,8 @@ function ContractProgress(props) {
                 var pct = contractQty > 0 ? Math.round(installedQty / contractQty * 1000) / 10 : 0
                 var pctColor = pct >= 100 ? 'text-emerald-400' : pct > 0 ? 'text-orange-400' : 'text-slate-600'
                 return (
-                  <div key={ci.id} className="grid grid-cols-12 gap-0 px-3 py-2 border-b border-slate-800/50">
+                  <button key={ci.id} onClick={function() { if (props.onQuickEntry) props.onQuickEntry(ci) }}
+                    className="w-full grid grid-cols-12 gap-0 px-3 py-2 border-b border-slate-800/50 text-left active:bg-slate-800/60">
                     <span className="col-span-1 text-orange-400 text-xs font-mono">{ci.item_number}</span>
                     <div className="col-span-4 min-w-0">
                       <p className="text-slate-200 text-xs truncate">{ci.description}</p>
@@ -413,7 +430,7 @@ function ContractProgress(props) {
                     <span className="col-span-2 text-slate-200 text-xs font-mono text-right">{installedQty > 0 ? formatNum(installedQty) : '—'}</span>
                     <span className="col-span-1 text-slate-400 text-xs font-mono text-right">{storedQty > 0 ? formatNum(storedQty) : '—'}</span>
                     <span className={'col-span-2 text-xs font-mono text-right ' + pctColor}>{pct > 0 ? pct + '%' : '—'}</span>
-                  </div>
+                  </button>
                 )
               })}
             </div>

@@ -393,95 +393,6 @@ export function ProjectDocsModal(props) {
     setBidItems([])
   }
 
-  async function handleCoUpload(e) {
-    var file = e.target.files && e.target.files[0]
-    if (!file || !coLabel.trim()) return
-    setCoImporting(true)
-    try {
-      var data = await file.arrayBuffer()
-      var wb = XLSX.read(data)
-      var ws = wb.Sheets[wb.SheetNames[0]]
-      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
-
-      function cell(row, idx) { return idx >= 0 && row && idx < row.length ? String(row[idx] == null ? '' : row[idx]).trim() : '' }
-
-      var headerIdx = -1
-      var colMap = { item: 0, desc: 1, unit: 2, qty: 3, price: -1 }
-      for (var h = 0; h < Math.min(rows.length, 20); h++) {
-        var row = (rows[h] || []).map(function(c) { return String(c == null ? '' : c).toLowerCase().trim() })
-        var hasItem = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('item') >= 0 || c.indexOf('bid') >= 0) })
-        var hasDesc = row.findIndex(function(c) { return c.length > 0 && (c.indexOf('desc') >= 0 || c.indexOf('name') >= 0) })
-        if (hasItem >= 0 && hasDesc >= 0) {
-          headerIdx = h
-          colMap.item = hasItem
-          colMap.desc = hasDesc
-          for (var ci = 0; ci < row.length; ci++) {
-            if (row[ci].indexOf('unit') >= 0 && row[ci].indexOf('price') < 0) colMap.unit = ci
-            if (row[ci].indexOf('qty') >= 0 || row[ci].indexOf('quant') >= 0) colMap.qty = ci
-            if (row[ci].indexOf('price') >= 0) colMap.price = ci
-          }
-          break
-        }
-      }
-
-      var startRow = headerIdx >= 0 ? headerIdx + 1 : 0
-      var stopWords = ['total', 'project total']
-      var dataRows = []
-      for (var di = startRow; di < rows.length; di++) {
-        var r = rows[di]
-        var itemVal = cell(r, colMap.item)
-        var descVal = cell(r, colMap.desc)
-        var fullRow = (r || []).map(function(c) { return String(c == null ? '' : c).toLowerCase() }).join(' ')
-        var isStop = stopWords.some(function(sw) { return fullRow.indexOf(sw) >= 0 })
-        if (isStop) continue
-        if (!itemVal || !descVal) continue
-        if (!/^[\d]/.test(itemVal)) continue
-        dataRows.push(r)
-      }
-
-      if (dataRows.length === 0) {
-        alert('No items found in change order file.')
-        setCoImporting(false)
-        e.target.value = ''
-        return
-      }
-
-      if (colMap.price < 0 && colMap.unit >= 0) { colMap.price = colMap.unit + 1 }
-
-      var maxSort = bidItems.reduce(function(m, b) { return Math.max(m, b.sort_order || 0) }, 0)
-      var inserts = dataRows.map(function(r, i) {
-        var obj = {
-          project_id: project.id,
-          org_id: project.org_id,
-          item_number: cell(r, colMap.item),
-          description: cell(r, colMap.desc),
-          unit: cell(r, colMap.unit),
-          contract_quantity: colMap.qty >= 0 ? parseFloat(r[colMap.qty]) || 0 : 0,
-          sort_order: maxSort + 1 + i,
-          change_order: coLabel.trim(),
-        }
-        if (colMap.price >= 0) {
-          var priceVal = parseFloat(String(r[colMap.price]).replace(/[^0-9.\-]/g, ''))
-          if (!isNaN(priceVal)) { obj.unit_price = priceVal }
-        }
-        return obj
-      })
-
-      var result = await supabase.from('contract_items').insert(inserts).select()
-      if (!result.error && result.data) {
-        setBidItems(function(prev) { return prev.concat(result.data) })
-      } else {
-        alert('Import failed: ' + (result.error ? result.error.message : 'unknown'))
-      }
-    } catch (err) {
-      alert('Failed to read file: ' + err.message)
-    }
-    setCoImporting(false)
-    setCoMode(false)
-    setCoLabel('')
-    e.target.value = ''
-  }
-
   async function handleAddItem() {
     if (!addItemForm.description.trim() || addingItem) return
     setAddingItem(true)
@@ -522,10 +433,12 @@ export function ProjectDocsModal(props) {
           className={'flex-1 py-3 text-xs font-semibold uppercase tracking-wider text-center ' + (tab === 'docs' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-slate-500')}>
           Documents
         </button>
-        <button onClick={function() { setTab('bid') }}
-          className={'flex-1 py-3 text-xs font-semibold uppercase tracking-wider text-center ' + (tab === 'bid' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-slate-500')}>
-          Bid Items ({bidItems.length})
-        </button>
+        {project && project.project_type !== 'tm_force_account' && (
+          <button onClick={function() { setTab('bid') }}
+            className={'flex-1 py-3 text-xs font-semibold uppercase tracking-wider text-center ' + (tab === 'bid' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-slate-500')}>
+            Bid Items ({bidItems.length})
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto pb-24">
@@ -551,7 +464,9 @@ export function ProjectDocsModal(props) {
               var folderDocs = docs.filter(function(d) { return (d.folder || 'General') === folder })
               if (folderDocs.length === 0) return null
               return <DocFolder key={folder} folder={folder} docs={folderDocs} folders={FOLDERS}
-                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder} onImportBid={importDocAsBidItems} onMarkup={setMarkupDoc}
+                importing={importing} onDelete={deleteDoc} onMove={moveDocFolder}
+                onImportBid={project && project.project_type === 'tm_force_account' ? null : importDocAsBidItems}
+                onMarkup={setMarkupDoc}
                 onPdfMarkup={function(doc) { setPdfPicker(doc); setPdfPageInput('1') }} />
             })}
           </div>
@@ -715,7 +630,7 @@ function DocFolder(props) {
                   <button onClick={function() { props.onDelete(doc.id, doc.storage_path) }}
                     className="text-slate-600 active:text-red-400 text-xs flex-shrink-0">x</button>
                 </div>
-                {isExcel && (
+                {isExcel && props.onImportBid && (
                   <div className="flex gap-2 mt-2">
                     <button onClick={function() { props.onImportBid(doc, null) }}
                       disabled={props.importing}

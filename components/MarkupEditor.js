@@ -303,18 +303,6 @@ export function MarkupEditor(props) {
     if (tool === 'eraser') {
       var ctx = canvasRef.current.getContext('2d')
       ctx.globalCompositeOperation = 'source-over'
-      // Redraw base image under the erased areas
-      var canvas = canvasRef.current
-      var tempData = canvas.toDataURL()
-      var baseImg = imgRef.current
-      var tempImg = new Image()
-      tempImg.onload = function() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(baseImg, 0, 0)
-        ctx.drawImage(tempImg, 0, 0)
-        saveHistory()
-      }
-      // Actually just save history for eraser
       saveHistory()
       return
     }

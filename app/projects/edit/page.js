@@ -42,6 +42,7 @@ function EditProjectPage() {
     project_engineer: '',
     location: '',
     start_date: '',
+    project_type: 'unit_price_bid',
   })
 
   useEffect(function() {
@@ -62,6 +63,7 @@ function EditProjectPage() {
         project_engineer: result.data.project_engineer || '',
         location: result.data.location || '',
         start_date: result.data.start_date || '',
+        project_type: result.data.project_type || 'unit_price_bid',
       })
     }
   }
@@ -82,6 +84,7 @@ function EditProjectPage() {
       general_contractor: form.contractor.trim() || null,
       project_engineer: form.project_engineer.trim() || null,
       location: form.location.trim() || null,
+      project_type: form.project_type,
     }).eq('id', projectId)
     setSaving(false)
     if (result.error) { setError('Failed to save: ' + result.error.message); return }
@@ -100,6 +103,24 @@ function EditProjectPage() {
       </div>
       <div className="p-4 space-y-4 pb-24">
         {error && <p className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-xl px-4 py-3">{error}</p>}
+        <div>
+          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Project Type<span className="text-orange-400 ml-1">*</span></p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={function() { setField('project_type', 'unit_price_bid') }}
+              className={'rounded-xl px-3 py-3 text-sm font-semibold border transition-colors ' + (form.project_type === 'unit_price_bid' ? 'bg-orange-500 text-white border-orange-500' : 'bg-slate-800 text-slate-300 border-slate-700 active:bg-slate-700')}>
+              Bid Job
+            </button>
+            <button type="button" onClick={function() { setField('project_type', 'tm_force_account') }}
+              className={'rounded-xl px-3 py-3 text-sm font-semibold border transition-colors ' + (form.project_type === 'tm_force_account' ? 'bg-orange-500 text-white border-orange-500' : 'bg-slate-800 text-slate-300 border-slate-700 active:bg-slate-700')}>
+              Time &amp; Materials
+            </button>
+          </div>
+          <p className="text-slate-600 text-xs mt-2">
+            {form.project_type === 'unit_price_bid'
+              ? 'Bid items, contract progress, document tools, daily reports.'
+              : 'Daily T&M tracker for labor, equipment, materials. Reports still available.'}
+          </p>
+        </div>
         <Field value={form.project_name} onChange={function(v) { setField('project_name', v) }} label="Project Name" required={true} placeholder="e.g. Elm Street Improvements" />
         <Field value={form.project_number} onChange={function(v) { setField('project_number', v) }} label="Project Number" placeholder="e.g. 2025-001" />
         <Field value={form.owner} onChange={function(v) { setField('owner', v) }} label="Owner" placeholder="e.g. City of Springfield" />

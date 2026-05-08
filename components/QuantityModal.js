@@ -45,8 +45,13 @@ export function QuantityModal(props) {
   }
 
   async function loadInstalled() {
-    var result = await supabase.from('materials').select('*').eq('report_id', report.id).eq('is_delivery', false).order('logged_at', { ascending: true })
-    if (!result.error && result.data) { setInstalled(result.data) }
+    var both = await Promise.all([
+      supabase.from('materials').select('*').eq('report_id', report.id).eq('is_delivery', false).order('logged_at', { ascending: true }),
+      supabase.from('quantity_entries').select('*').eq('report_id', report.id).order('created_at', { ascending: true }),
+    ])
+    var matRows = (both[0].data || []).map(function(m) { return Object.assign({}, m, { _source: 'material' }) })
+    var entryRows = (both[1].data || []).map(function(e) { return Object.assign({}, e, { _source: 'entry' }) })
+    setInstalled(matRows.concat(entryRows))
   }
 
   function buildLocationRef(item, qty, notes) {
@@ -71,20 +76,40 @@ export function QuantityModal(props) {
   async function handleSave() {
     if (!description.trim() || saving) return
     setSaving(true)
-    var finalUnit = unit === 'Other' ? customUnit.trim() : unit
-    var insertPayload = {
-      report_id: report.id,
-      project_id: report.project_id,
-      org_id: report.org_id,
-      material_type: description.trim(),
-      quantity: String(parseFloat(quantity) || 0),
-      unit: finalUnit,
-      location_ref: buildLocationRef(itemNumber, quantity, locationNotes),
-      is_delivery: false,
-      logged_at: new Date().toISOString(),
+    var insertResult
+    if (contractItemId) {
+      // Bid-tied quantity — single source of truth is quantity_entries
+      var auth = await supabase.auth.getUser()
+      var userId = auth.data && auth.data.user ? auth.data.user.id : null
+      var noteParts = []
+      if (locationNotes.trim()) noteParts.push(locationNotes.trim())
+      if (isNaN(parseFloat(quantity)) && quantity.trim()) noteParts.push('QTYTEXT:' + quantity.trim())
+      insertResult = await supabase.from('quantity_entries').insert({
+        org_id: report.org_id,
+        project_id: report.project_id,
+        contract_item_id: contractItemId,
+        report_id: report.id,
+        entry_date: report.report_date || new Date().toISOString().split('T')[0],
+        quantity: parseFloat(quantity) || 0,
+        source: 'report',
+        notes: noteParts.length > 0 ? noteParts.join('|') : null,
+        created_by: userId,
+      })
+    } else {
+      // Generic (non-bid-tied) installed quantity — stays in materials
+      var finalUnit = unit === 'Other' ? customUnit.trim() : unit
+      insertResult = await supabase.from('materials').insert({
+        report_id: report.id,
+        project_id: report.project_id,
+        org_id: report.org_id,
+        material_type: description.trim(),
+        quantity: String(parseFloat(quantity) || 0),
+        unit: finalUnit,
+        location_ref: buildLocationRef(itemNumber, quantity, locationNotes),
+        is_delivery: false,
+        logged_at: new Date().toISOString(),
+      })
     }
-    if (contractItemId) { insertPayload.contract_item_id = contractItemId }
-    var insertResult = await supabase.from('materials').insert(insertPayload)
     setSaving(false)
     if (insertResult.error) { alert('Save failed: ' + insertResult.error.message); return }
     setDescription('')
@@ -115,9 +140,10 @@ export function QuantityModal(props) {
     if (onSaved) { onSaved() }
   }
 
-  async function deleteInstalled(id) {
-    await supabase.from('materials').delete().eq('id', id)
-    setInstalled(function(prev) { return prev.filter(function(m) { return m.id !== id }) })
+  async function deleteInstalled(row) {
+    var table = row._source === 'entry' ? 'quantity_entries' : 'materials'
+    await supabase.from(table).delete().eq('id', row.id)
+    setInstalled(function(prev) { return prev.filter(function(m) { return m.id !== row.id }) })
     if (onSaved) { onSaved() }
   }
 
@@ -368,16 +394,24 @@ export function QuantityModal(props) {
             <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Added This Report</p>
             <div className="space-y-1.5">
               {installed.map(function(m) {
+                var isEntry = m._source === 'entry'
+                var ci = isEntry ? contractItems.find(function(c) { return c.id === m.contract_item_id }) : null
+                var displayName = isEntry
+                  ? ((ci && ci.item_number ? ci.item_number + ' — ' : '') + (ci ? ci.description : '—'))
+                  : m.material_type
+                var displayUnit = isEntry ? (ci ? ci.unit : '') : m.unit
                 return (
-                  <div key={m.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
+                  <div key={m._source + ':' + m.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <span className="text-slate-200 text-sm">{m.material_type}</span>
-                      <span className="text-orange-400 text-xs font-mono ml-2">{m.quantity} {m.unit}</span>
+                      <span className="text-slate-200 text-sm truncate">{displayName}</span>
+                      <span className="text-orange-400 text-xs font-mono ml-2">{m.quantity} {displayUnit}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                      <button onClick={function() { setEditingEntry(m) }}
-                        className="text-slate-500 active:text-slate-200 text-xs">Edit</button>
-                      <button onClick={function() { deleteInstalled(m.id) }}
+                      {!isEntry && (
+                        <button onClick={function() { setEditingEntry(m) }}
+                          className="text-slate-500 active:text-slate-200 text-xs">Edit</button>
+                      )}
+                      <button onClick={function() { deleteInstalled(m) }}
                         className="text-slate-600 active:text-red-400 text-xs">x</button>
                     </div>
                   </div>

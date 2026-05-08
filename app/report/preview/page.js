@@ -37,15 +37,38 @@ function PreviewPage() {
       supabase.from('equipment_logs').select('*').eq('report_id', reportId),
       supabase.from('field_photos').select('*').eq('report_id', reportId).eq('is_report_photo', true).order('report_order', { ascending: true }).limit(4),
       supabase.from('crew_logs').select('*').eq('report_id', reportId),
+      supabase.from('quantity_entries').select('*').eq('report_id', reportId).order('created_at', { ascending: true }),
+      supabase.from('contract_items').select('id, item_number, description, unit').eq('project_id', rep.project_id),
     ])
     var inspResult = rep.inspector_id
       ? await supabase.from('users').select('full_name, signature_url').eq('id', rep.inspector_id).maybeSingle()
       : { data: null }
+
+    // Adapt quantity_entries into the shape the renderer expects for installed rows
+    var ciById = {}
+    ;(all[6].data || []).forEach(function(ci) { ciById[ci.id] = ci })
+    var entryRows = (all[5].data || []).map(function(qe) {
+      var ci = ciById[qe.contract_item_id] || {}
+      var noteParts = []
+      if (ci.item_number) noteParts.push('ITEM:' + ci.item_number)
+      if (qe.notes) noteParts.push(qe.notes)
+      return {
+        id: 'qe:' + qe.id,
+        material_type: ci.description || '',
+        quantity: String(qe.quantity),
+        unit: ci.unit || '',
+        location_ref: noteParts.join('|') || null,
+        is_delivery: false,
+        contract_item_id: qe.contract_item_id,
+      }
+    })
+    var materialsRows = all[1].data || []
+
     setData({
       report: rep,
       project: projResult.data || {},
       activities: all[0].data || [],
-      materials: all[1].data || [],
+      materials: materialsRows.concat(entryRows),
       equipment: all[2].data || [],
       photos: all[3].data || [],
       crew: all[4].data || [],

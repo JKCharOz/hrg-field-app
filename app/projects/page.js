@@ -216,8 +216,13 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-2">
                   <button onClick={function() { setDocsProject(project) }}
                     className="text-slate-400 text-xs px-2 py-1 border border-slate-700 rounded-lg active:bg-slate-700">Files</button>
-                  <button onClick={function() { router.push('/projects/totals?id=' + project.id) }}
-                    className="text-orange-400 text-xs px-2 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10">Totals</button>
+                  {project.project_type === 'tm_force_account' ? (
+                    <button onClick={function() { router.push('/projects/tm?id=' + project.id) }}
+                      className="text-orange-400 text-xs px-2 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10">T&amp;M</button>
+                  ) : (
+                    <button onClick={function() { router.push('/projects/totals?id=' + project.id) }}
+                      className="text-orange-400 text-xs px-2 py-1 border border-orange-500/30 rounded-lg active:bg-orange-500/10">Totals</button>
+                  )}
                   <button onClick={function() { router.push('/projects/edit?id=' + project.id) }}
                     className="text-slate-500 text-xs px-2 py-1 border border-slate-700 rounded-lg active:bg-slate-700">Edit</button>
                   <button onClick={async function() {
@@ -233,6 +238,8 @@ export default function ProjectsPage() {
                       await supabase.from('field_photos').delete().in('report_id', reportIds)
                       await supabase.from('stored_materials').delete().in('report_id', reportIds)
                     }
+                    // Must clear quantity_entries before daily_reports (report_id is ON DELETE RESTRICT)
+                    await supabase.from('quantity_entries').delete().eq('project_id', pid)
                     await supabase.from('daily_reports').delete().eq('project_id', pid)
                     await supabase.from('contract_items').delete().eq('project_id', pid)
                     await supabase.from('project_documents').delete().eq('project_id', pid)
@@ -251,9 +258,17 @@ export default function ProjectsPage() {
                 </p>
               </button>
               {inProgress.length > 0 && (
-                <InProgressSection reports={inProgress} router={router} onDelete={function(id) {
+                <InProgressSection reports={inProgress} router={router} onDelete={async function(id) {
+                  await supabase.from('activity_logs').delete().eq('report_id', id)
+                  await supabase.from('materials').delete().eq('report_id', id)
+                  await supabase.from('equipment_logs').delete().eq('report_id', id)
+                  await supabase.from('crew_logs').delete().eq('report_id', id)
+                  await supabase.from('field_photos').delete().eq('report_id', id)
+                  await supabase.from('stored_materials').delete().eq('report_id', id)
+                  await supabase.from('quantity_entries').delete().eq('report_id', id)
+                  var result = await supabase.from('daily_reports').delete().eq('id', id)
+                  if (result.error) { alert('Delete failed: ' + result.error.message); return }
                   setReports(function(prev) { return prev.filter(function(r) { return r.id !== id }) })
-                  supabase.from('daily_reports').delete().eq('id', id)
                 }} />
               )}
               {completed.length > 0 && (
