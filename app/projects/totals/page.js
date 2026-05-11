@@ -171,6 +171,10 @@ function TotalsPage() {
             <p className="text-orange-400 text-xs font-semibold uppercase tracking-widest leading-none mb-0.5">Project Totals</p>
             <h1 className="text-white font-bold text-base leading-tight truncate">{project ? project.project_name : ''}</h1>
           </div>
+          <button onClick={function() { router.push('/projects/totals/print?id=' + projectId) }}
+            className="text-orange-400 text-xs px-3 py-1.5 border border-orange-500/30 rounded-lg active:bg-orange-500/10 flex-shrink-0">
+            Print
+          </button>
         </div>
       </div>
 
