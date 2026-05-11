@@ -282,7 +282,15 @@ function TmPage() {
           />
         )}
         {view === 'week' && <WeekView weekStart={weekStartOf(selectedDate)} setDate={setSelectedDate} entries={entries} />}
-        {view === 'totals' && <TotalsView entries={entries} items={items} />}
+        {view === 'totals' && (
+          <div>
+            <button onClick={function() { router.push('/projects/tm/print?id=' + projectId) }}
+              className="w-full mb-4 bg-slate-800 border border-slate-700 rounded-xl py-3 text-orange-400 text-sm font-semibold active:bg-slate-700">
+              Print / Save as PDF
+            </button>
+            <TotalsView entries={entries} items={items} />
+          </div>
+        )}
       </div>
 
       {addingForCategory && (
