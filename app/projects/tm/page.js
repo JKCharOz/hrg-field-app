@@ -400,7 +400,7 @@ function DayView(p) {
                   var entry = p.entries.find(function(e) { return e._source !== 'report' && e.entry_date === p.date && (e.item_id === item.id || (e.category === item.category && e.description === item.description && (e.unit || '') === (item.unit || ''))) })
                   var qty = entry ? (parseFloat(entry.quantity) || 0) : null
                   var hasEntry = qty != null && qty !== 0
-                  var breakdown = entry && entry.count != null && entry.per_unit != null && parseFloat(entry.count) !== 1
+                  var breakdown = entry && entry.count != null && entry.per_unit != null
                     ? fmtNum(entry.count) + ' × ' + fmtNum(entry.per_unit)
                     : null
                   return (
@@ -420,7 +420,7 @@ function DayView(p) {
                       </button>
                       <button onClick={function() { p.onEditItem(item) }}
                         className="px-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-500 text-xs active:bg-slate-700">
-                        Edit
+                        Rename
                       </button>
                     </div>
                   )
@@ -444,7 +444,7 @@ function DayView(p) {
                 <p className="text-slate-600 text-xs uppercase tracking-wider mb-1.5">From Daily Reports</p>
                 <div className="space-y-1.5">
                   {reportEntries.map(function(e) {
-                    var bd = e.count != null && e.per_unit != null && parseFloat(e.count) !== 1
+                    var bd = e.count != null && e.per_unit != null
                       ? fmtNum(e.count) + ' × ' + fmtNum(e.per_unit) + ' '
                       : ''
                     return (
@@ -616,7 +616,7 @@ function ItemModal(p) {
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
       <div className="flex items-center justify-between px-4 pt-12 pb-4 bg-slate-900 border-b border-slate-700">
         <button onClick={p.onCancel} className="text-orange-400 text-sm">Cancel</button>
-        <p className="text-white text-sm font-semibold">{p.mode === 'edit' ? 'Edit ' + catLabel + ' Item' : 'Add ' + catLabel + ' Item'}</p>
+        <p className="text-white text-sm font-semibold">{p.mode === 'edit' ? 'Rename ' + catLabel + ' Item' : 'Add ' + catLabel + ' Item'}</p>
         <button onClick={submit} disabled={saving} className="text-orange-400 text-sm font-semibold disabled:opacity-40">
           {saving ? 'Saving...' : 'Save'}
         </button>
