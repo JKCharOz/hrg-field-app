@@ -125,6 +125,7 @@ function TmPage() {
   var [addingForCategory, setAddingForCategory] = useState(null)
   var [editingItem, setEditingItem] = useState(null)
   var [logTarget, setLogTarget] = useState(null)
+  var [bulkCategory, setBulkCategory] = useState(null)
 
   useEffect(function() {
     if (projectId) loadAll()
@@ -244,6 +245,45 @@ function TmPage() {
     loadAll()
   }
 
+  async function bulkSetHoursEach(category, hoursStr) {
+    var hours = parseFloat(hoursStr)
+    if (isNaN(hours) || hours <= 0) { alert('Enter a positive number of hours.'); return }
+    var catItems = items.filter(function(i) { return i.category === category && !i.archived })
+    if (catItems.length === 0) { setBulkCategory(null); return }
+    var ops = catItems.map(async function(item) {
+      var existing = entries.find(function(e) {
+        return e._source !== 'report' && e.entry_date === selectedDate
+          && (e.item_id === item.id || (e.category === item.category && e.description === item.description && (e.unit || '') === (item.unit || '')))
+      })
+      if (existing) {
+        var count = parseFloat(existing.count) || 1
+        return supabase.from('tm_entries').update({
+          per_unit: hours,
+          count: count,
+          quantity: count * hours,
+        }).eq('id', existing.id)
+      }
+      return supabase.from('tm_entries').insert({
+        org_id: orgId,
+        project_id: projectId,
+        entry_date: selectedDate,
+        category: item.category,
+        description: item.description,
+        quantity: hours,
+        count: 1,
+        per_unit: hours,
+        unit: item.unit || null,
+        item_id: item.id,
+        created_by: userId,
+      })
+    })
+    var results = await Promise.all(ops)
+    var firstErr = results.find(function(r) { return r && r.error })
+    if (firstErr) { alert('Save failed: ' + firstErr.error.message) }
+    setBulkCategory(null)
+    loadAll()
+  }
+
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-7 h-7 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" /></div>
   if (!project) return <div className="min-h-screen bg-slate-950 text-slate-400 p-8 text-center">Project not found.</div>
 
@@ -279,6 +319,7 @@ function TmPage() {
             onAddItem={setAddingForCategory}
             onEditItem={setEditingItem}
             onTapLog={setLogTarget}
+            onBulkSet={setBulkCategory}
           />
         )}
         {view === 'week' && <WeekView weekStart={weekStartOf(selectedDate)} setDate={setSelectedDate} entries={entries} />}
@@ -308,6 +349,12 @@ function TmPage() {
         <LogQuantityModal target={logTarget}
           onCancel={function() { setLogTarget(null) }}
           onSave={logQuantity} />
+      )}
+      {bulkCategory && (
+        <BulkHoursModal category={bulkCategory} date={selectedDate}
+          itemCount={items.filter(function(i) { return i.category === bulkCategory && !i.archived }).length}
+          onCancel={function() { setBulkCategory(null) }}
+          onSave={function(hrs) { bulkSetHoursEach(bulkCategory, hrs) }} />
       )}
     </div>
   )
@@ -380,10 +427,18 @@ function DayView(p) {
                 })}
               </div>
             )}
-            <button onClick={function() { p.onAddItem(c.key) }}
-              className="w-full mt-2 border border-dashed border-slate-700 rounded-xl py-2 text-orange-400 text-xs active:bg-slate-800">
-              + Add {c.label}
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button onClick={function() { p.onAddItem(c.key) }}
+                className="flex-1 border border-dashed border-slate-700 rounded-xl py-2 text-orange-400 text-xs active:bg-slate-800">
+                + Add {c.label}
+              </button>
+              {c.key !== 'material' && catItems.length > 0 && (
+                <button onClick={function() { p.onBulkSet(c.key) }}
+                  className="border border-slate-700 rounded-xl py-2 px-3 text-slate-300 text-xs active:bg-slate-800">
+                  Set All Hrs
+                </button>
+              )}
+            </div>
             {reportEntries.length > 0 && (
               <div className="mt-3">
                 <p className="text-slate-600 text-xs uppercase tracking-wider mb-1.5">From Daily Reports</p>
@@ -666,6 +721,41 @@ function LogQuantityModal(p) {
         {existing && (
           <p className="text-slate-600 text-xs text-center mt-3">Set to 0 to remove this entry.</p>
         )}
+      </div>
+    </div>
+  )
+}
+
+function BulkHoursModal(p) {
+  var [hrs, setHrs] = useState('')
+  var [saving, setSaving] = useState(false)
+  var catLabel = (CATEGORIES.find(function(c) { return c.key === p.category }) || {}).label || ''
+
+  async function submit() {
+    setSaving(true)
+    await p.onSave(hrs)
+    setSaving(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={p.onCancel}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm" onClick={function(e) { e.stopPropagation() }}>
+        <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">{fmtShort(p.date)}</p>
+        <p className="text-white text-base font-semibold mb-1">Set all {catLabel.toLowerCase()} hours</p>
+        <p className="text-slate-500 text-xs mb-4">Applies to all {p.itemCount} {catLabel.toLowerCase()} item{p.itemCount === 1 ? '' : 's'}. Existing entries keep their count; new entries default to count 1.</p>
+        <input type="number" inputMode="decimal" value={hrs} onChange={function(e) { setHrs(e.target.value) }}
+          placeholder="Hours each" autoFocus
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-2xl text-center focus:outline-none focus:border-orange-500 mb-4" />
+        <div className="flex gap-2">
+          <button onClick={p.onCancel}
+            className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 py-3 rounded-xl text-sm font-semibold active:bg-slate-700">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={saving || !hrs}
+            className="flex-1 bg-orange-500 text-white py-3 rounded-xl text-sm font-semibold active:bg-orange-600 disabled:opacity-40">
+            {saving ? 'Saving...' : 'Apply to All'}
+          </button>
+        </div>
       </div>
     </div>
   )
